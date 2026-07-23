@@ -3,7 +3,8 @@ import { put } from '@vercel/blob'
 import { createAnimal, getAllAnimals, updateAnimal } from '@/lib/db'
 import { v4 as uuidv4 } from 'uuid'
 import { auth0 } from '@/lib/auth0'
-import { createAnimalIssue } from '@/lib/github-post'
+import { saveAnimalToBox } from '@/lib/box-post'
+import { analyzeAnimalImage } from '@/lib/analyze-image'
 
 export async function GET() {
   try {
@@ -20,16 +21,24 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
+    const session = await auth0.getSession()
+    if (!session) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const formData = await request.formData()
     const imageFile = formData.get('image') as File | null
-    const githubHandle = formData.get('githubHandle') as string | null
 
-    if (!imageFile || !githubHandle) {
-      return NextResponse.json(
-        { error: 'Missing image or GitHub handle' },
-        { status: 400 },
-      )
+    if (!imageFile) {
+      return NextResponse.json({ error: 'Missing image' }, { status: 400 })
     }
+
+    // Attribution comes from the logged-in Auth0 user — no free-text handle
+    const handle =
+      (session.user.name as string | undefined) ??
+      (session.user.nickname as string | undefined) ??
+      (session.user.email as string | undefined) ??
+      'Party Animal'
 
     // 1. Upload original drawing to Vercel Blob
     const imageId = uuidv4()
@@ -42,33 +51,29 @@ export async function POST(request: NextRequest) {
 
     // 2. Save initial record to DB
     const animal = await createAnimal({
-      github_handle: githubHandle.startsWith('@')
-        ? githubHandle
-        : `@${githubHandle}`,
+      handle,
       image_url: imageBlob.url,
     })
 
-    // 3. Grab the GitHub token from Auth0 Token Vault while the session is active.
-    let githubToken: string | null = null
+    // 3. Grab the Box token from Auth0 Token Vault while the session is active.
+    //    If the user hasn't connected Box, we simply skip the Box share later.
+    let boxToken: string | null = null
     try {
       const { token } = await auth0.getAccessTokenForConnection({
-        connection: 'github',
+        connection: 'box',
       })
-      githubToken = token
-    } catch (err) {
-      console.warn(
-        '[POST /api/animals] Could not get GitHub token — issue post skipped:',
-        err,
+      boxToken = token
+    } catch {
+      console.info(
+        '[POST /api/animals] Box not connected — skipping Box save for',
+        animal.id,
       )
     }
 
-    // 4. Kick off video generation async (don't await — respond fast)
-    void generateAndSaveVideo(
-      animal.id,
-      imageBlob.url,
-      animal.github_handle,
-      githubToken,
-    ).catch((err) => console.error('[generateAndSaveVideo]', err))
+    // 4. Kick off the async pipeline (don't await — respond fast)
+    void runPipeline(animal.id, imageBlob.url, boxToken).catch((err) =>
+      console.error('[runPipeline]', err),
+    )
 
     return NextResponse.json(animal, { status: 201 })
   } catch (err) {
@@ -77,12 +82,47 @@ export async function POST(request: NextRequest) {
   }
 }
 
+async function runPipeline(
+  animalId: string,
+  imageUrl: string,
+  boxToken: string | null,
+) {
+  // Claude describes the drawing while Grok animates it — run both in parallel.
+  const [, videoUrl] = await Promise.all([
+    describeImage(animalId, imageUrl),
+    generateAndSaveVideo(animalId, imageUrl),
+  ])
+
+  // Share to Box only if the user connected their account.
+  if (!boxToken) return
+
+  try {
+    const { folderUrl } = await saveAnimalToBox({
+      token: boxToken,
+      animalId,
+      imageUrl,
+      videoUrl: videoUrl ?? undefined,
+    })
+    await updateAnimal(animalId, { status: 'posted', box_url: folderUrl })
+  } catch (err) {
+    console.error('[runPipeline] saveAnimalToBox failed:', err)
+  }
+}
+
+async function describeImage(animalId: string, imageUrl: string) {
+  try {
+    const { title, description } = await analyzeAnimalImage(imageUrl)
+    await updateAnimal(animalId, { title, description })
+  } catch (err) {
+    // Non-fatal — the wall just falls back to showing the handle.
+    console.error('[describeImage] Claude analysis failed:', err)
+  }
+}
+
 async function generateAndSaveVideo(
   animalId: string,
   imageUrl: string,
-  githubHandle: string,
-  githubToken: string | null,
-) {
+): Promise<string | null> {
   const xaiBase = 'https://api.x.ai/v1'
   const apiKey = process.env.XAI_API_KEY!
 
@@ -126,7 +166,7 @@ async function generateAndSaveVideo(
     )
   }
 
-  // 4. Poll until complete (max 3 min, every 5s)
+  // Poll until complete (max 3 min, every 5s)
   let videoUrl: string | null = null
   const maxAttempts = 36
 
@@ -156,7 +196,7 @@ async function generateAndSaveVideo(
     throw new Error('Video generation timed out')
   }
 
-  // 5. Download video and re-upload to Vercel Blob
+  // Download video and re-upload to Vercel Blob
   const videoRes = await fetch(videoUrl)
   if (!videoRes.ok) throw new Error('Failed to download generated video')
 
@@ -167,29 +207,10 @@ async function generateAndSaveVideo(
     contentType: 'video/mp4',
   })
 
-  // 6. Update DB record
+  // Update DB record
   await updateAnimal(animalId, { video_url: stored.url, status: 'approved' })
 
-  // 7. Post to GitHub as an issue
-  if (!githubToken) {
-    console.warn(
-      '[generateAndSaveVideo] Missing GitHub token — created video but skipped GitHub posting:',
-      { animalId },
-    )
-    return
-  }
-
-  try {
-    const issue = await createAnimalIssue({
-      token: githubToken,
-      githubHandle,
-      imageUrl,
-      videoUrl: stored.url,
-    })
-    await updateAnimal(animalId, { status: 'posted', issue_url: issue.url })
-  } catch (err) {
-    console.error('[generateAndSaveVideo] createAnimalIssue failed:', err)
-  }
+  return stored.url
 }
 
 function sleep(ms: number) {

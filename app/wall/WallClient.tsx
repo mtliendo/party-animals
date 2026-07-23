@@ -31,8 +31,17 @@ export default function WallClient({ animals: initialAnimals, isLoggedIn }: { an
     return () => window.removeEventListener("keydown", handler);
   }, [selected, closeModal]);
 
+  // Lock body scroll while the modal is open (mobile-friendly)
   useEffect(() => {
-    const hasPending = animals.some((a) => !a.video_url || a.status !== "posted");
+    if (!selected) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = prev; };
+  }, [selected]);
+
+  useEffect(() => {
+    // Keep polling while any animal is missing its video or Claude description
+    const hasPending = animals.some((a) => !a.video_url || !a.title);
     if (!hasPending) return;
 
     const interval = setInterval(async () => {
@@ -41,7 +50,7 @@ export default function WallClient({ animals: initialAnimals, isLoggedIn }: { an
         if (!res.ok) return;
         const fresh: Animal[] = await res.json();
         setAnimals(fresh);
-        const stillPending = fresh.some((a) => !a.video_url || a.status !== "posted");
+        const stillPending = fresh.some((a) => !a.video_url || !a.title);
         if (!stillPending) clearInterval(interval);
       } catch {
         // silently ignore transient fetch errors
@@ -55,7 +64,7 @@ export default function WallClient({ animals: initialAnimals, isLoggedIn }: { an
     <div className="min-h-screen flex flex-col" style={{ background: "var(--bg-dark)" }}>
       {/* Nav */}
       <nav
-        className="flex items-center justify-between px-6 py-4 border-b"
+        className="flex flex-wrap items-center justify-between gap-y-2 px-4 sm:px-6 py-4 border-b"
         style={{ borderColor: "var(--border)" }}
       >
         <Link
@@ -65,9 +74,9 @@ export default function WallClient({ animals: initialAnimals, isLoggedIn }: { an
         >
           PARTY ANIMALS
         </Link>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3 sm:gap-4">
           <span
-            className="text-sm font-semibold tracking-widest uppercase"
+            className="text-sm font-semibold tracking-widest uppercase hidden sm:inline"
             style={{ color: "var(--neon-cyan)" }}
           >
             The Wall
@@ -87,11 +96,11 @@ export default function WallClient({ animals: initialAnimals, isLoggedIn }: { an
         </div>
       </nav>
 
-      <main className="flex-1 px-6 py-12 max-w-7xl mx-auto w-full">
+      <main className="flex-1 px-4 sm:px-6 py-8 sm:py-12 max-w-7xl mx-auto w-full">
         {/* Header */}
-        <div className="text-center mb-12">
+        <div className="text-center mb-8 sm:mb-12">
           <h1
-            className="text-6xl sm:text-7xl mb-4 tracking-wide"
+            className="text-5xl sm:text-7xl mb-4 tracking-wide"
             style={{ fontFamily: "var(--font-bangers)" }}
           >
             <span className="gradient-text glow-pink">THE WALL</span>
@@ -132,12 +141,14 @@ export default function WallClient({ animals: initialAnimals, isLoggedIn }: { an
       </main>
 
       <footer
-        className="text-center py-8 text-xs border-t"
+        className="text-center py-8 text-xs border-t px-4"
         style={{ borderColor: "var(--border)", color: "var(--text-muted)" }}
       >
         Powered by{" "}
         <span style={{ color: "var(--hot-pink)" }}>Auth0 Token Vault</span> ·{" "}
-        <span style={{ color: "var(--neon-cyan)" }}>Grok AI</span>
+        <span style={{ color: "var(--neon-cyan)" }}>Grok AI</span> ·{" "}
+        <span style={{ color: "var(--electric-purple)" }}>Claude</span> ·{" "}
+        <span style={{ color: "var(--gold)" }}>Box</span>
       </footer>
 
       {selected && (
@@ -177,7 +188,7 @@ function AnimalCard({ animal, onClick }: { animal: Animal; onClick: () => void }
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={animal.image_url}
-            alt={`${animal.github_handle}'s party animal`}
+            alt={animal.title ?? `${animal.handle}'s party animal`}
             className="w-full h-full object-contain p-4"
           />
         ) : (
@@ -210,7 +221,7 @@ function AnimalCard({ animal, onClick }: { animal: Animal; onClick: () => void }
                 color: "var(--neon-cyan)",
               }}
             >
-              Posted to GitHub
+              Saved to Box
             </Badge>
           ) : animal.video_url ? (
             <Badge
@@ -239,25 +250,45 @@ function AnimalCard({ animal, onClick }: { animal: Animal; onClick: () => void }
       </div>
 
       {/* Footer */}
-      <div className="p-4 flex items-center justify-between">
-        <a
-          href={`https://github.com/${animal.github_handle.replace("@", "")}`}
-          target="_blank"
-          rel="noopener noreferrer"
-          onClick={(e) => e.stopPropagation()}
-          className="text-sm font-semibold hover:opacity-80 transition-opacity"
-          style={{ color: "var(--hot-pink)" }}
+      <div className="p-4 flex flex-col gap-1">
+        <p
+          className="text-sm font-semibold leading-snug"
+          style={{ color: "var(--text-primary)", fontFamily: "var(--font-bangers)", letterSpacing: "0.03em" }}
         >
-          {animal.github_handle.startsWith("@") ? animal.github_handle : `@${animal.github_handle}`}
-        </a>
-        <span className="text-xs" style={{ color: "var(--text-muted)" }}>
-          {new Date(animal.created_at).toLocaleDateString("en-US", {
-            month: "short",
-            day: "numeric",
-          })}
-        </span>
+          {animal.title ?? "Untitled masterpiece…"}
+        </p>
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-semibold" style={{ color: "var(--hot-pink)" }}>
+            {animal.handle}
+          </span>
+          <span className="text-xs" style={{ color: "var(--text-muted)" }}>
+            {new Date(animal.created_at).toLocaleDateString("en-US", {
+              month: "short",
+              day: "numeric",
+            })}
+          </span>
+        </div>
       </div>
     </div>
+  );
+}
+
+// Vercel Blob honors ?download=1 by serving the file with a
+// Content-Disposition: attachment header — the `download` attribute alone is
+// ignored on cross-origin URLs.
+function downloadUrl(url: string) {
+  return `${url}${url.includes("?") ? "&" : "?"}download=1`;
+}
+
+function DownloadLink({ url, label }: { url: string; label: string }) {
+  return (
+    <a
+      href={downloadUrl(url)}
+      className="text-center py-2.5 text-xs font-semibold tracking-widest uppercase hover:opacity-70 transition-opacity"
+      style={{ color: "var(--text-muted)", borderTop: "1px solid var(--border)" }}
+    >
+      ↓ {label}
+    </a>
   );
 }
 
@@ -274,35 +305,34 @@ function AnimalModal({
   onAnimalDeleted: (id: string) => void;
   isLoggedIn: boolean;
 }) {
-  const handle = animal.github_handle.startsWith("@") ? animal.github_handle : `@${animal.github_handle}`;
-  const [postState, setPostState] = useState<
-    { type: "idle" } | { type: "posting" } | { type: "success" } | { type: "error"; message: string }
+  const [saveState, setSaveState] = useState<
+    { type: "idle" } | { type: "saving" } | { type: "success" } | { type: "error"; message: string }
   >({ type: "idle" });
   const [deleteState, setDeleteState] = useState<"idle" | "confirming" | "deleting">("idle");
 
-  async function handlePostToGitHub() {
-    setPostState({ type: "posting" });
+  async function handleSaveToBox() {
+    setSaveState({ type: "saving" });
 
     try {
-      const res = await fetch(`/api/animals/${animal.id}/post-to-github`, {
+      const res = await fetch(`/api/animals/${animal.id}/save-to-box`, {
         method: "POST",
       });
 
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        throw new Error(data.error ?? "Failed to post to GitHub.");
+        throw new Error(data.error ?? "Failed to save to Box.");
       }
 
       onAnimalUpdated({
         ...animal,
         status: "posted",
-        issue_url: data.issueUrl ?? animal.issue_url,
+        box_url: data.boxUrl ?? animal.box_url,
       });
-      setPostState({ type: "success" });
+      setSaveState({ type: "success" });
     } catch (err) {
-      setPostState({
+      setSaveState({
         type: "error",
-        message: err instanceof Error ? err.message : "Failed to post to GitHub.",
+        message: err instanceof Error ? err.message : "Failed to save to Box.",
       });
     }
   }
@@ -320,12 +350,12 @@ function AnimalModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4"
       style={{ background: "rgba(0,0,0,0.85)" }}
       onClick={onClose}
     >
       <div
-        className="relative w-full max-w-3xl rounded-2xl overflow-hidden"
+        className="relative w-full max-w-3xl rounded-2xl overflow-y-auto max-h-[90dvh] overscroll-contain"
         style={{
           background: "var(--bg-card)",
           border: "1px solid var(--border)",
@@ -335,17 +365,18 @@ function AnimalModal({
       >
         {/* Header */}
         <div
-          className="flex items-center justify-between px-6 py-4 border-b"
-          style={{ borderColor: "var(--border)" }}
+          className="sticky top-0 z-10 flex items-center justify-between gap-3 px-4 sm:px-6 py-4 border-b"
+          style={{ borderColor: "var(--border)", background: "var(--bg-card)" }}
         >
-          <div className="flex items-center gap-3">
+          <div className="flex flex-col min-w-0">
             <span
-              className="text-xl tracking-wide"
+              className="text-lg sm:text-xl tracking-wide leading-tight truncate"
               style={{ fontFamily: "var(--font-bangers)", color: "var(--hot-pink)" }}
             >
-              {handle}
+              {animal.title ?? `${animal.handle}'s Party Animal`}
             </span>
-            <span className="text-xs" style={{ color: "var(--text-muted)" }}>
+            <span className="text-xs truncate" style={{ color: "var(--text-muted)" }}>
+              by {animal.handle} ·{" "}
               {new Date(animal.created_at).toLocaleDateString("en-US", {
                 month: "short",
                 day: "numeric",
@@ -354,7 +385,7 @@ function AnimalModal({
           </div>
           <button
             onClick={onClose}
-            className="text-xl leading-none hover:opacity-60 transition-opacity"
+            className="text-xl leading-none hover:opacity-60 transition-opacity shrink-0 p-2 -m-2"
             style={{ color: "var(--text-muted)" }}
             aria-label="Close"
           >
@@ -362,12 +393,28 @@ function AnimalModal({
           </button>
         </div>
 
+        {/* What the agent saw */}
+        <div
+          className="px-4 sm:px-6 py-4 border-b"
+          style={{ borderColor: "var(--border)", background: "rgba(176,38,255,0.04)" }}
+        >
+          <p
+            className="text-xs font-semibold tracking-widest uppercase mb-1"
+            style={{ color: "var(--electric-purple)" }}
+          >
+            🧠 What the agent saw
+          </p>
+          <p className="text-sm leading-relaxed" style={{ color: "var(--text-primary)" }}>
+            {animal.description ?? "Claude is still studying this masterpiece…"}
+          </p>
+        </div>
+
         {/* Media panels */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-0">
           {/* Original drawing */}
           <div
-            className="flex flex-col"
-            style={{ borderRight: "1px solid var(--border)" }}
+            className="flex flex-col border-b sm:border-b-0 sm:border-r"
+            style={{ borderColor: "var(--border)" }}
           >
             <div
               className="text-center py-2 text-xs font-semibold tracking-widest uppercase"
@@ -387,13 +434,16 @@ function AnimalModal({
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
                   src={animal.image_url}
-                  alt={`${handle}'s original drawing`}
+                  alt={animal.title ?? `${animal.handle}'s original drawing`}
                   className="w-full h-full object-contain"
                 />
               ) : (
                 <Skeleton className="w-full h-full" />
               )}
             </div>
+            {animal.image_url && (
+              <DownloadLink url={animal.image_url} label="Download Image" />
+            )}
           </div>
 
           {/* Animated video */}
@@ -430,60 +480,65 @@ function AnimalModal({
                 </div>
               )}
             </div>
+            {animal.video_url && (
+              <DownloadLink url={animal.video_url} label="Download Video" />
+            )}
           </div>
         </div>
 
         {/* Footer */}
         <div
-          className="px-6 py-4 flex items-center justify-between border-t"
+          className="px-4 sm:px-6 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-t"
           style={{ borderColor: "var(--border)" }}
         >
           <div className="flex flex-col gap-2">
-            <button
-              onClick={handlePostToGitHub}
-              disabled={!animal.video_url || postState.type === "posting"}
-              className="btn-primary text-sm px-5 py-2 border-0"
-              style={{
-                background:
-                  postState.type === "posting"
-                    ? "rgba(255,45,120,0.4)"
-                    : "linear-gradient(135deg, var(--hot-pink), var(--electric-purple))",
-              }}
-            >
-              {postState.type === "posting"
-                ? "Posting..."
-                : animal.status === "posted"
-                  ? "Post to GitHub Again"
-                  : "Post to GitHub"}
-            </button>
-            {postState.type === "error" && (
+            {isLoggedIn && (
+              <button
+                onClick={handleSaveToBox}
+                disabled={!animal.image_url || saveState.type === "saving"}
+                className="btn-primary text-sm px-5 py-2 border-0"
+                style={{
+                  background:
+                    saveState.type === "saving"
+                      ? "rgba(255,45,120,0.4)"
+                      : "linear-gradient(135deg, var(--hot-pink), var(--electric-purple))",
+                }}
+              >
+                {saveState.type === "saving"
+                  ? "Saving..."
+                  : animal.status === "posted"
+                    ? "Save to Box Again"
+                    : "Save to Box 📦"}
+              </button>
+            )}
+            {saveState.type === "error" && (
               <span className="text-xs" style={{ color: "var(--hot-pink)" }}>
-                {postState.message}
+                {saveState.message}
               </span>
             )}
-            {postState.type === "success" && (
+            {saveState.type === "success" && (
               <span className="text-xs" style={{ color: "var(--neon-cyan)" }}>
-                Posted to GitHub!
+                Saved to Box!
               </span>
             )}
-            {animal.issue_url && (
+            {animal.box_url && (
               <a
-                href={animal.issue_url}
+                href={animal.box_url}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-xs font-semibold hover:opacity-80 transition-opacity"
                 style={{ color: "var(--neon-cyan)" }}
               >
-                View issue on GitHub →
+                View folder in Box →
               </a>
             )}
           </div>
-          <div className="flex flex-col items-end gap-2">
+          <div className="flex flex-row sm:flex-col items-center sm:items-end justify-between sm:justify-start gap-2">
             <div
               className="text-sm font-semibold"
               style={{ color: animal.status === "posted" ? "var(--neon-cyan)" : "var(--text-muted)" }}
             >
-              {animal.status === "posted" ? "Posted to GitHub" : "Ready to share"}
+              {animal.status === "posted" ? "Saved to Box" : "On the wall"}
             </div>
             {isLoggedIn && (
               <button

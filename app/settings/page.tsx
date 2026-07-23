@@ -8,10 +8,10 @@ export default async function SettingsPage() {
     redirect('/auth/login?returnTo=/settings')
   }
 
-  async function checkGitHubConnected() {
+  async function checkBoxConnected() {
     try {
       await auth0.getAccessTokenForConnection({
-        connection: 'github',
+        connection: 'box',
       })
       return true
     } catch {
@@ -19,7 +19,7 @@ export default async function SettingsPage() {
     }
   }
 
-  const githubConnected = await checkGitHubConnected()
+  const boxConnected = await checkBoxConnected()
 
-  return <SettingsClient user={session.user} githubConnected={githubConnected} userId={session.user.sub as string} />
+  return <SettingsClient user={session.user} boxConnected={boxConnected} userId={session.user.sub as string} />
 }

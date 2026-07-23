@@ -3,8 +3,6 @@
 import dynamic from "next/dynamic";
 import { useState, useCallback, useEffect } from "react";
 import Link from "next/link";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 
@@ -24,18 +22,18 @@ type SubmitState =
   | { type: "success" }
   | { type: "error"; message: string };
 
-export default function DrawClient() {
+export default function DrawClient({
+  displayName,
+  boxConnected,
+}: {
+  displayName: string;
+  boxConnected: boolean;
+}) {
   const [excalidrawAPI, setExcalidrawAPI] = useState<ExcalidrawImperativeAPI | null>(null);
   const onExcalidrawAPI = useCallback((api: ExcalidrawImperativeAPI) => setExcalidrawAPI(api), []);
-  const [githubHandle, setGithubHandle] = useState("");
   const [state, setState] = useState<SubmitState>({ type: "idle" });
 
   async function handleSubmit() {
-    if (!githubHandle.trim()) {
-      setState({ type: "error", message: "Please enter your GitHub username." });
-      return;
-    }
-
     if (!excalidrawAPI) {
       setState({ type: "error", message: "Canvas not ready — please wait a moment." });
       return;
@@ -63,7 +61,6 @@ export default function DrawClient() {
 
       const formData = new FormData();
       formData.append("image", blob, "animal.png");
-      formData.append("githubHandle", githubHandle.trim());
 
       const res = await fetch("/api/animals", {
         method: "POST",
@@ -85,14 +82,14 @@ export default function DrawClient() {
   }
 
   if (state.type === "success") {
-    return <SuccessScreen githubHandle={githubHandle} />;
+    return <SuccessScreen displayName={displayName} boxConnected={boxConnected} />;
   }
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden min-h-0" style={{ background: "var(--bg-dark)" }}>
       {/* Nav */}
       <nav
-        className="flex items-center justify-between px-6 py-4 border-b shrink-0"
+        className="flex flex-wrap items-center justify-between gap-y-2 px-4 sm:px-6 py-3 sm:py-4 border-b shrink-0"
         style={{ borderColor: "var(--border)" }}
       >
         <Link
@@ -102,7 +99,7 @@ export default function DrawClient() {
         >
           PARTY ANIMALS
         </Link>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3 sm:gap-4">
           <Link href="/wall" className="text-sm hover:text-white transition-colors" style={{ color: "var(--text-muted)" }}>
             The Wall
           </Link>
@@ -115,17 +112,17 @@ export default function DrawClient() {
         </div>
       </nav>
 
-      <main className="flex-1 flex overflow-hidden">
+      <main className="flex-1 flex flex-col lg:flex-row overflow-hidden min-h-0">
         {/* Canvas */}
-        <div className="flex-1 relative overflow-hidden">
+        <div className="flex-1 relative overflow-hidden min-h-[45vh] lg:min-h-0">
           <ExcalidrawWrapper
             excalidrawAPI={onExcalidrawAPI}
           />
         </div>
 
-        {/* Sidebar — scrollable; capped at 50vh on mobile, full height on desktop */}
+        {/* Sidebar — scrollable; capped at 45vh on mobile, full height on desktop */}
         <div
-          className="w-full lg:w-80 shrink-0 flex flex-col gap-6 p-6 border-t lg:border-t-0 lg:border-l overflow-y-auto max-h-[50vh] lg:max-h-none"
+          className="w-full lg:w-80 shrink-0 flex flex-col gap-5 p-4 sm:p-6 border-t lg:border-t-0 lg:border-l overflow-y-auto max-h-[45vh] lg:max-h-none"
           style={{ borderColor: "var(--border)", background: "var(--bg-card)" }}
         >
           <div>
@@ -138,44 +135,56 @@ export default function DrawClient() {
               <span style={{ color: "var(--neon-cyan)" }}>PARTY ANIMAL</span>
             </h1>
             <p className="text-sm" style={{ color: "var(--text-muted)" }}>
-              Sketch anything wild. AI animates it into a video that hits the wall — and GitHub.
+              Sketch anything wild. Claude names it, Grok animates it, and it hits the wall.
             </p>
           </div>
 
           <Separator className="opacity-20" />
 
-          {/* GitHub handle input */}
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="github-handle" className="text-sm font-semibold tracking-wide" style={{ color: "var(--text-primary)" }}>
-              Your GitHub Username
-            </Label>
-            <div className="relative">
-              <span
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-bold select-none"
-                style={{ color: "var(--text-muted)" }}
-              >
-                @
-              </span>
-              <Input
-                id="github-handle"
-                value={githubHandle}
-                onChange={(e) => {
-                  setGithubHandle(e.target.value.replace(/^@/, ""));
-                  if (state.type === "error") setState({ type: "idle" });
-                }}
-                placeholder="yourusername"
-                className="pl-7"
-                style={{
-                  background: "var(--bg-dark)",
-                  border: "1px solid var(--border)",
-                  color: "var(--text-primary)",
-                }}
-                disabled={state.type === "submitting"}
-              />
+          {/* Attribution */}
+          <div
+            className="rounded-xl p-4 flex items-center gap-3"
+            style={{
+              background: "rgba(0,240,255,0.06)",
+              border: "1px solid rgba(0,240,255,0.2)",
+            }}
+          >
+            <span className="text-xl">🎨</span>
+            <div className="min-w-0">
+              <p className="text-xs uppercase tracking-widest font-bold" style={{ color: "var(--neon-cyan)" }}>
+                Drawing as
+              </p>
+              <p className="text-sm font-semibold truncate" style={{ color: "var(--text-primary)" }}>
+                {displayName}
+              </p>
             </div>
-            <p className="text-xs" style={{ color: "var(--text-muted)" }}>
-              You&apos;ll be mentioned in the GitHub issue when your animal is posted.
-            </p>
+          </div>
+
+          {/* Box status */}
+          <div
+            className="rounded-xl p-4 text-xs flex items-start gap-3"
+            style={{
+              background: boxConnected ? "rgba(0,240,255,0.06)" : "rgba(255,215,0,0.06)",
+              border: boxConnected
+                ? "1px solid rgba(0,240,255,0.2)"
+                : "1px solid rgba(255,215,0,0.2)",
+              color: boxConnected ? "var(--neon-cyan)" : "var(--gold)",
+            }}
+          >
+            <span className="text-lg">📦</span>
+            <span>
+              {boxConnected ? (
+                "Box connected — your animal will be saved to your Box account automatically."
+              ) : (
+                <>
+                  Box not connected — your animal still hits the wall, but won&apos;t be
+                  saved to Box.{" "}
+                  <Link href="/settings" className="underline hover:opacity-80">
+                    Connect in Settings
+                  </Link>
+                </>
+              )}
+            </span>
           </div>
 
           {/* Tips */}
@@ -254,7 +263,14 @@ function CanvasLoader() {
   );
 }
 
-const PIPELINE_STEPS = [
+const BASE_PIPELINE_STEPS = [
+  {
+    icon: "🧠",
+    label: "Claude Reads Your Drawing",
+    detail: "Writing a title + description of what it sees",
+    color: "var(--electric-purple)",
+    durationMs: 2400,
+  },
   {
     icon: "🎬",
     label: "Animating with Grok AI",
@@ -266,26 +282,38 @@ const PIPELINE_STEPS = [
     icon: "🗄️",
     label: "Saving to Neon Database",
     detail: "Storing your animal on the wall",
-    color: "var(--electric-purple)",
+    color: "var(--gold)",
     durationMs: 1800,
   },
+];
+
+const BOX_PIPELINE_STEPS = [
   {
     icon: "🔐",
     label: "Auth0 Token Vault",
-    detail: "Fetching short-lived GitHub credentials — securely",
+    detail: "Fetching short-lived Box credentials — securely",
     color: "var(--neon-cyan)",
     durationMs: 2400,
   },
   {
-    icon: "🐙",
-    label: "Posting to GitHub",
-    detail: "Creating a gallery issue with your party animal",
+    icon: "📦",
+    label: "Saving to Box",
+    detail: "Dropping your drawing + animation in your Box account",
     color: "var(--gold)",
     durationMs: 1600,
   },
 ];
 
-function SuccessScreen({ githubHandle }: { githubHandle: string }) {
+function SuccessScreen({
+  displayName,
+  boxConnected,
+}: {
+  displayName: string;
+  boxConnected: boolean;
+}) {
+  const steps = boxConnected
+    ? [...BASE_PIPELINE_STEPS, ...BOX_PIPELINE_STEPS]
+    : BASE_PIPELINE_STEPS;
   const [activeStep, setActiveStep] = useState(0);
   const [doneSteps, setDoneSteps] = useState<Set<number>>(new Set());
   const [allDone, setAllDone] = useState(false);
@@ -296,13 +324,13 @@ function SuccessScreen({ githubHandle }: { githubHandle: string }) {
 
     function advance() {
       if (cancelled) return;
-      if (current >= PIPELINE_STEPS.length) {
+      if (current >= steps.length) {
         setAllDone(true);
         return;
       }
       setActiveStep(current);
       const step = current;
-      const duration = PIPELINE_STEPS[step].durationMs;
+      const duration = steps[step].durationMs;
       setTimeout(() => {
         if (cancelled) return;
         setDoneSteps((prev) => new Set([...prev, step]));
@@ -314,15 +342,16 @@ function SuccessScreen({ githubHandle }: { githubHandle: string }) {
     advance();
 
     return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const progressPct = allDone
     ? 100
-    : Math.round((doneSteps.size / PIPELINE_STEPS.length) * 100);
+    : Math.round((doneSteps.size / steps.length) * 100);
 
   return (
     <div
-      className="min-h-screen flex flex-col items-center justify-center text-center px-6 py-12"
+      className="min-h-screen flex flex-col items-center justify-center text-center px-4 sm:px-6 py-12"
       style={{ background: "var(--bg-dark)" }}
     >
       <div className="max-w-xl w-full flex flex-col items-center gap-8">
@@ -342,7 +371,8 @@ function SuccessScreen({ githubHandle }: { githubHandle: string }) {
           <p className="text-base" style={{ color: "var(--text-muted)" }}>
             {allDone ? (
               <>
-                <span style={{ color: "var(--neon-cyan)" }}>@{githubHandle}</span>&apos;s party animal is now on the GitHub gallery!
+                <span style={{ color: "var(--neon-cyan)" }}>{displayName}</span>&apos;s party
+                animal is heading to the wall{boxConnected ? " — and your Box account!" : "!"}
               </>
             ) : (
               "Watch the full agent pipeline run in real-time."
@@ -375,7 +405,7 @@ function SuccessScreen({ githubHandle }: { githubHandle: string }) {
 
         {/* Step list */}
         <div className="w-full flex flex-col gap-3">
-          {PIPELINE_STEPS.map((step, i) => {
+          {steps.map((step, i) => {
             const isDone = doneSteps.has(i);
             const isActive = activeStep === i && !isDone;
             const isPending = !isDone && !isActive;
@@ -383,7 +413,7 @@ function SuccessScreen({ githubHandle }: { githubHandle: string }) {
             return (
               <div
                 key={i}
-                className="flex items-center gap-4 rounded-2xl px-5 py-4 transition-all duration-500"
+                className="flex items-center gap-4 rounded-2xl px-4 sm:px-5 py-4 transition-all duration-500"
                 style={{
                   background: isDone
                     ? "rgba(255,255,255,0.04)"
@@ -483,7 +513,7 @@ function SuccessScreen({ githubHandle }: { githubHandle: string }) {
 
         {/* CTA — only show when done */}
         {allDone && (
-          <div className="flex gap-4 pt-2">
+          <div className="flex flex-wrap gap-4 pt-2 justify-center">
             <Link href="/wall" className="btn-primary">
               See The Wall 🐾
             </Link>

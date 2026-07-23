@@ -20,11 +20,11 @@ type User = {
 
 export default function SettingsClient({
   user,
-  githubConnected,
+  boxConnected,
   userId,
 }: {
   user: User
-  githubConnected: boolean
+  boxConnected: boolean
   userId: string
 }) {
   return (
@@ -34,7 +34,7 @@ export default function SettingsClient({
     >
       {/* Nav */}
       <nav
-        className='flex items-center justify-between px-6 py-4 border-b'
+        className='flex flex-wrap items-center justify-between gap-y-2 px-4 sm:px-6 py-4 border-b'
         style={{ borderColor: 'var(--border)' }}
       >
         <Link
@@ -47,7 +47,7 @@ export default function SettingsClient({
         >
           PARTY ANIMALS
         </Link>
-        <div className='flex items-center gap-4'>
+        <div className='flex items-center gap-3 sm:gap-4'>
           <Link href='/draw' className='btn-secondary text-sm py-2 px-5'>
             Draw
           </Link>
@@ -68,17 +68,17 @@ export default function SettingsClient({
         </div>
       </nav>
 
-      <main className='flex-1 flex flex-col items-center justify-center px-6 py-16'>
+      <main className='flex-1 flex flex-col items-center justify-center px-4 sm:px-6 py-10 sm:py-16'>
         <div className='w-full max-w-xl flex flex-col gap-6'>
           <div className='text-center mb-4'>
             <h1
-              className='text-5xl tracking-wide mb-2'
+              className='text-4xl sm:text-5xl tracking-wide mb-2'
               style={{ fontFamily: 'var(--font-bangers)' }}
             >
               <span className='gradient-text'>SETTINGS</span>
             </h1>
             <p style={{ color: 'var(--text-muted)' }}>
-              Connect your GitHub account so your party animal gets posted to the gallery.
+              Connect your Box account to keep a copy of your party animal in your own Box storage.
             </p>
           </div>
 
@@ -129,7 +129,7 @@ export default function SettingsClient({
 
           <Separator className='opacity-20' />
 
-          {/* GitHub connection card */}
+          {/* Box connection card */}
           <Card
             style={{
               background: 'var(--bg-card)',
@@ -145,9 +145,9 @@ export default function SettingsClient({
                     color: 'var(--text-primary)',
                   }}
                 >
-                  GITHUB ACCOUNT
+                  BOX ACCOUNT
                 </CardTitle>
-                {githubConnected ? (
+                {boxConnected ? (
                   <Badge
                     style={{
                       background: 'rgba(0,240,255,0.12)',
@@ -170,13 +170,13 @@ export default function SettingsClient({
                 )}
               </div>
               <CardDescription style={{ color: 'var(--text-muted)' }}>
-                {githubConnected
-                  ? 'Your GitHub account is connected. Your party animal will be posted to the gallery as a GitHub issue.'
-                  : 'Connect your GitHub account to post your party animal to the gallery.'}
+                {boxConnected
+                  ? 'Your Box account is connected. When you unleash an animal, the drawing and animation are automatically saved to a "Party Animals" folder in your Box.'
+                  : 'Connect Box and your party animal gets saved to your own Box account automatically. Skip it, and your animal still hits the wall — it just won\'t be saved to Box.'}
               </CardDescription>
             </CardHeader>
             <CardContent>
-              {githubConnected ? (
+              {boxConnected ? (
                 <div className='flex flex-col gap-3'>
                   <div
                     className='rounded-lg p-4 text-sm'
@@ -186,23 +186,23 @@ export default function SettingsClient({
                       color: 'var(--neon-cyan)',
                     }}
                   >
-                    GitHub credentials are securely stored in Auth0 Token Vault.
-                    Your party animal will be posted to the gallery — you never share
-                    passwords.
+                    Box credentials are securely stored in Auth0 Token Vault.
+                    The agent fetches a short-lived token at save time — you never
+                    share passwords.
                   </div>
                   <a
-                    href='/auth/connect?connection=github&returnTo=/settings'
+                    href='/auth/connect?connection=box&returnTo=/settings'
                     className='btn-secondary w-full justify-center text-center'
                   >
-                    Reconnect GitHub
+                    Reconnect Box
                   </a>
                 </div>
               ) : (
                 <a
-                  href='/auth/connect?connection=github&returnTo=/settings'
+                  href='/auth/connect?connection=box&returnTo=/settings'
                   className='btn-primary w-full justify-center'
                 >
-                  Connect GitHub Account
+                  Connect Box Account
                 </a>
               )}
             </CardContent>
@@ -249,15 +249,15 @@ export default function SettingsClient({
               {[
                 {
                   icon: '🔐',
-                  text: 'Your GitHub token is stored once in Auth0 Token Vault — never in our database.',
+                  text: 'Your Box token is stored once in Auth0 Token Vault — never in our database.',
                 },
                 {
                   icon: '🤖',
-                  text: 'The agent retrieves it at post time to create a GitHub issue with your party animal.',
+                  text: 'The agent retrieves it at save time to drop your drawing + animation into your Box.',
                 },
                 {
-                  icon: '✋',
-                  text: 'Human-in-the-loop: the bot only posts after the admin reviews your animal.',
+                  icon: '🧠',
+                  text: 'Claude looks at your drawing and writes the title + description you see on the wall.',
                 },
               ].map(({ icon, text }) => (
                 <div key={text} className='flex items-start gap-3'>

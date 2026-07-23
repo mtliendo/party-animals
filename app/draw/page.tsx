@@ -8,5 +8,20 @@ export default async function DrawPage() {
     redirect("/auth/login?returnTo=/draw");
   }
 
-  return <DrawClient />;
+  async function checkBoxConnected() {
+    try {
+      await auth0.getAccessTokenForConnection({ connection: "box" });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  const displayName =
+    (session.user.name as string | undefined) ??
+    (session.user.nickname as string | undefined) ??
+    (session.user.email as string | undefined) ??
+    "Party Animal";
+
+  return <DrawClient displayName={displayName} boxConnected={await checkBoxConnected()} />;
 }
