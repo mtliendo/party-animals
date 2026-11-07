@@ -1,8 +1,8 @@
 import Link from 'next/link'
-import { auth0 } from '@/lib/auth0'
+import { getSessionFlags } from '@/lib/admin'
 
 export default async function Home() {
-  const session = await auth0.getSession()
+  const { isAdmin } = await getSessionFlags()
 
   return (
     <div
@@ -31,10 +31,17 @@ export default async function Home() {
           >
             The Wall
           </Link>
-          {session ? (
+          <Link href='/draw' className='btn-primary text-sm py-2 px-5'>
+            Draw
+          </Link>
+          {isAdmin ? (
             <>
-              <Link href='/draw' className='btn-primary text-sm py-2 px-5'>
-                Draw
+              <Link
+                href='/settings'
+                className='text-sm hover:text-white transition-colors'
+                style={{ color: 'var(--text-muted)' }}
+              >
+                Settings
               </Link>
               <Link
                 href='/auth/logout'
@@ -45,8 +52,12 @@ export default async function Home() {
               </Link>
             </>
           ) : (
-            <Link href='/auth/login' className='btn-primary text-sm py-2 px-5'>
-              Login
+            <Link
+              href='/auth/login?returnTo=/settings'
+              className='text-sm hover:text-white transition-colors'
+              style={{ color: 'var(--text-muted)' }}
+            >
+              Admin
             </Link>
           )}
         </div>
@@ -102,18 +113,9 @@ export default async function Home() {
           </p>
 
           <div className='flex flex-col sm:flex-row gap-4 justify-center'>
-            {session ? (
-              <Link href='/draw' className='btn-primary text-xl px-10 py-4'>
-                Draw Your Animal 🎨
-              </Link>
-            ) : (
-              <Link
-                href='/auth/login?screen_hint=signup'
-                className='btn-primary text-xl px-10 py-4'
-              >
-                Get Started 🎨
-              </Link>
-            )}
+            <Link href='/draw' className='btn-primary text-xl px-10 py-4'>
+              Draw Your Animal 🎨
+            </Link>
             <Link href='/wall' className='btn-secondary text-xl px-10 py-4'>
               See The Wall 🐾
             </Link>
@@ -149,7 +151,7 @@ export default async function Home() {
               step: '03',
               icon: '🐾',
               title: 'Hit the Wall',
-              desc: 'Your animal goes live on the wall and gets posted to the GitHub gallery.',
+              desc: 'Your animal goes live on the wall. The admin can post it to the GitHub gallery.',
               color: 'var(--neon-cyan)',
             },
           ].map(({ step, icon, title, desc, color }) => (

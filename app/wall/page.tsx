@@ -1,13 +1,13 @@
-import { auth0 } from "@/lib/auth0";
+import { getSessionFlags } from "@/lib/admin";
 import { getAllAnimals } from "@/lib/db";
 import WallClient from "./WallClient";
 
 export const revalidate = 30;
 
 export default async function WallPage() {
-  const [animals, session] = await Promise.all([
+  const [animals, { isAdmin }] = await Promise.all([
     getAllAnimals(),
-    auth0.getSession(),
+    getSessionFlags(),
   ]);
-  return <WallClient animals={animals} isLoggedIn={!!session} />;
+  return <WallClient animals={animals} isAdmin={isAdmin} />;
 }

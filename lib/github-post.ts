@@ -2,7 +2,8 @@ import { Octokit } from 'octokit'
 
 const ISSUE_REPO = process.env.GITHUB_ISSUE_REPO ?? 'focusotter/party-animals-gallery'
 const EVENT_LABEL = 'ai-world-fair'
-const WALL_URL = process.env.NEXT_PUBLIC_WALL_URL ?? 'https://party-animals.vercel.app/wall'
+const WALL_URL =
+  process.env.NEXT_PUBLIC_WALL_URL ?? 'https://party-animals-xi.vercel.app/wall'
 
 function repoParts() {
   const [owner, repo] = ISSUE_REPO.split('/')
@@ -28,7 +29,7 @@ export async function validateGithubLogin(
 export type IssueInput = {
   token: string
   githubHandle: string
-  imageUrl: string
+  imageUrl?: string
   videoUrl?: string
 }
 
@@ -49,13 +50,15 @@ export async function createAnimalIssue(
   }
 
   const lines = [
-    `![Party Animal by ${validatedMention}](${input.imageUrl})`,
+    input.imageUrl
+      ? `![Party Animal by ${validatedMention}](${input.imageUrl})`
+      : '',
     '',
     `🐾 **${validatedMention}**'s party animal, brought to life by AI!`,
     '',
     input.videoUrl
       ? `🎬 [Watch the animation](${input.videoUrl})`
-      : '_Animation generating — check back soon!_',
+      : '_Still of the original drawing — animation was not ready yet._',
     '',
     `Check out all the animals on [The Wall](${WALL_URL})`,
     '',
