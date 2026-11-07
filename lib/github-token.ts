@@ -1,5 +1,10 @@
 import { auth0 } from '@/lib/auth0'
 import { GITHUB_TOKEN_CLAIM_KEYS, githubIdentityToken } from '@/lib/github-claims'
+import {
+  logUnauthorized,
+  readAuth0Session,
+  type SessionRequest,
+} from '@/lib/admin'
 
 export type GitHubTokenSource = 'token-vault' | 'github-login' | 'env'
 
@@ -88,16 +93,21 @@ async function getGithubIdentityAccessToken(
  * 2. Custom claim copied at login (Post-Login Action)
  * 3. GitHub social identity access_token (OAuth App login token; no refresh token)
  */
-export async function getAdminGitHubToken(): Promise<GitHubTokenResult> {
-  const session = await auth0.getSession()
+export async function getAdminGitHubToken(
+  request?: SessionRequest,
+): Promise<GitHubTokenResult> {
+  const session = await readAuth0Session(request)
   if (!session?.user) {
+    logUnauthorized('getAdminGitHubToken', 'no session', session)
     return { error: 'Unauthorized', status: 401 }
   }
 
   try {
-    const { token } = await auth0.getAccessTokenForConnection({
-      connection: 'github',
-    })
+    const { token } = await auth0.getAccessTokenForConnection(
+      { connection: 'github' },
+      request,
+      undefined,
+    )
     if (token) return { token, source: 'token-vault' }
   } catch (err) {
     console.warn(

@@ -337,13 +337,30 @@ function AnimalModal({
     setPostState({ type: "posting" });
 
     try {
-      const res = await fetch(`/api/animals/${animal.id}/post-to-github`, {
-        method: "POST",
-      });
+      const res = await fetch(
+        new URL(`/api/animals/${animal.id}/post-to-github`, window.location.origin),
+        {
+          method: "POST",
+          credentials: "include",
+          headers: { Accept: "application/json" },
+        },
+      );
 
-      const data = await res.json().catch(() => ({}));
+      const text = await res.text();
+      let data: { error?: string; issueUrl?: string } = {};
+      if (text) {
+        try {
+          data = JSON.parse(text) as { error?: string; issueUrl?: string };
+        } catch {
+          // Middleware / HTML error pages are not JSON.
+        }
+      }
       if (!res.ok) {
-        throw new Error(data.error ?? "Failed to post to GitHub.");
+        throw new Error(
+          (typeof data.error === "string" && data.error) ||
+            text.trim().slice(0, 300) ||
+            `Request failed (${res.status})`,
+        );
       }
 
       onAnimalUpdated({
