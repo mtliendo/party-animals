@@ -78,7 +78,7 @@ export default function SettingsClient({
               <span className='gradient-text'>SETTINGS</span>
             </h1>
             <p style={{ color: 'var(--text-muted)' }}>
-              Connect your GitHub account so your party animal gets posted to the gallery.
+              Admin only. Connect GitHub via Auth0 Token Vault so you can post animals to the gallery.
             </p>
           </div>
 

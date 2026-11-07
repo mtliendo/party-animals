@@ -24,7 +24,7 @@ type SubmitState =
   | { type: "success" }
   | { type: "error"; message: string };
 
-export default function DrawClient() {
+export default function DrawClient({ isAdmin }: { isAdmin: boolean }) {
   const [excalidrawAPI, setExcalidrawAPI] = useState<ExcalidrawImperativeAPI | null>(null);
   const onExcalidrawAPI = useCallback((api: ExcalidrawImperativeAPI) => setExcalidrawAPI(api), []);
   const [githubHandle, setGithubHandle] = useState("");
@@ -106,12 +106,16 @@ export default function DrawClient() {
           <Link href="/wall" className="text-sm hover:text-white transition-colors" style={{ color: "var(--text-muted)" }}>
             The Wall
           </Link>
-          <Link href="/settings" className="text-sm hover:text-white transition-colors" style={{ color: "var(--text-muted)" }}>
-            Settings
-          </Link>
-          <Link href="/auth/logout" className="text-sm hover:text-white transition-colors" style={{ color: "var(--text-muted)" }}>
-            Logout
-          </Link>
+          {isAdmin && (
+            <>
+              <Link href="/settings" className="text-sm hover:text-white transition-colors" style={{ color: "var(--text-muted)" }}>
+                Settings
+              </Link>
+              <Link href="/auth/logout" className="text-sm hover:text-white transition-colors" style={{ color: "var(--text-muted)" }}>
+                Logout
+              </Link>
+            </>
+          )}
         </div>
       </nav>
 
@@ -256,32 +260,25 @@ function CanvasLoader() {
 
 const PIPELINE_STEPS = [
   {
+    icon: "🗄️",
+    label: "Saving your drawing",
+    detail: "Storing the original on the wall",
+    color: "var(--electric-purple)",
+    durationMs: 1200,
+  },
+  {
     icon: "🎬",
     label: "Animating with Grok AI",
-    detail: "Converting your drawing into a video",
+    detail: "Turning your sketch into a video in the background",
     color: "var(--hot-pink)",
-    durationMs: 3200,
+    durationMs: 2200,
   },
   {
-    icon: "🗄️",
-    label: "Saving to Neon Database",
-    detail: "Storing your animal on the wall",
-    color: "var(--electric-purple)",
-    durationMs: 1800,
-  },
-  {
-    icon: "🔐",
-    label: "Auth0 Token Vault",
-    detail: "Fetching short-lived GitHub credentials — securely",
+    icon: "🐾",
+    label: "Hitting The Wall",
+    detail: "Your animal is live — no sign-in required",
     color: "var(--neon-cyan)",
-    durationMs: 2400,
-  },
-  {
-    icon: "🐙",
-    label: "Posting to GitHub",
-    detail: "Creating a gallery issue with your party animal",
-    color: "var(--gold)",
-    durationMs: 1600,
+    durationMs: 1400,
   },
 ];
 
@@ -342,10 +339,10 @@ function SuccessScreen({ githubHandle }: { githubHandle: string }) {
           <p className="text-base" style={{ color: "var(--text-muted)" }}>
             {allDone ? (
               <>
-                <span style={{ color: "var(--neon-cyan)" }}>@{githubHandle}</span>&apos;s party animal is now on the GitHub gallery!
+                <span style={{ color: "var(--neon-cyan)" }}>@{githubHandle}</span>&apos;s party animal is on the wall. Animation keeps cooking in the background.
               </>
             ) : (
-              "Watch the full agent pipeline run in real-time."
+              "Your drawing is in. AI is bringing it to life."
             )}
           </p>
         </div>
@@ -434,18 +431,6 @@ function SuccessScreen({ githubHandle }: { githubHandle: string }) {
                     }}
                   >
                     {step.label}
-                    {step.label === "Auth0 Token Vault" && (
-                      <span
-                        className="ml-2 text-xs font-bold tracking-widest uppercase px-1.5 py-0.5 rounded"
-                        style={{
-                          background: "rgba(0,245,255,0.12)",
-                          color: "var(--neon-cyan)",
-                          border: "1px solid rgba(0,245,255,0.3)",
-                        }}
-                      >
-                        Auth0
-                      </span>
-                    )}
                   </p>
                   <p className="text-xs mt-0.5" style={{ color: "rgba(255,255,255,0.3)" }}>
                     {step.detail}

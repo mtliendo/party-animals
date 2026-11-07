@@ -1,13 +1,22 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
 import type { Animal } from "@/lib/db";
 
-export default function WallClient({ animals: initialAnimals, isLoggedIn }: { animals: Animal[]; isLoggedIn: boolean }) {
+const VIDEO_FALLBACK_AFTER_MS = 3 * 60 * 1000;
+
+function isVideoStale(animal: Animal) {
+  if (animal.video_url) return false;
+  const created = new Date(animal.created_at).getTime();
+  if (Number.isNaN(created)) return false;
+  return Date.now() - created > VIDEO_FALLBACK_AFTER_MS;
+}
+
+export default function WallClient({ animals: initialAnimals, isAdmin }: { animals: Animal[]; isAdmin: boolean }) {
   const [animals, setAnimals] = useState<Animal[]>(initialAnimals);
   const [selected, setSelected] = useState<Animal | null>(null);
 
@@ -31,9 +40,26 @@ export default function WallClient({ animals: initialAnimals, isLoggedIn }: { an
     return () => window.removeEventListener("keydown", handler);
   }, [selected, closeModal]);
 
+  const kickedRef = useRef(new Set<string>());
+
   useEffect(() => {
-    const hasPending = animals.some((a) => !a.video_url || a.status !== "posted");
-    if (!hasPending) return;
+    function kickPending(list: Animal[]) {
+      for (const animal of list) {
+        if (animal.video_url || kickedRef.current.has(animal.id)) continue;
+        kickedRef.current.add(animal.id);
+        fetch(`/api/animals/${animal.id}/generate`, {
+          method: "POST",
+          keepalive: true,
+        }).catch(() => {
+          kickedRef.current.delete(animal.id);
+        });
+      }
+    }
+
+    kickPending(animals);
+
+    const hasPendingVideo = animals.some((a) => !a.video_url);
+    if (!hasPendingVideo) return;
 
     const interval = setInterval(async () => {
       try {
@@ -41,15 +67,21 @@ export default function WallClient({ animals: initialAnimals, isLoggedIn }: { an
         if (!res.ok) return;
         const fresh: Animal[] = await res.json();
         setAnimals(fresh);
-        const stillPending = fresh.some((a) => !a.video_url || a.status !== "posted");
-        if (!stillPending) clearInterval(interval);
+        setSelected((current) => {
+          if (!current) return current;
+          return fresh.find((a) => a.id === current.id) ?? current;
+        });
+        kickPending(fresh);
+        if (!fresh.some((a) => !a.video_url)) clearInterval(interval);
       } catch {
         // silently ignore transient fetch errors
       }
     }, 5000);
 
     return () => clearInterval(interval);
-  }, [animals]);
+    // Kick + poll once on mount; the interval refreshes the list.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <div className="min-h-screen flex flex-col" style={{ background: "var(--bg-dark)" }}>
@@ -72,14 +104,23 @@ export default function WallClient({ animals: initialAnimals, isLoggedIn }: { an
           >
             The Wall
           </span>
-          {isLoggedIn && (
-            <Link
-              href="/settings"
-              className="text-sm hover:text-white transition-colors"
-              style={{ color: "var(--text-muted)" }}
-            >
-              Settings
-            </Link>
+          {isAdmin && (
+            <>
+              <Link
+                href="/settings"
+                className="text-sm hover:text-white transition-colors"
+                style={{ color: "var(--text-muted)" }}
+              >
+                Settings
+              </Link>
+              <Link
+                href="/auth/logout"
+                className="text-sm hover:text-white transition-colors"
+                style={{ color: "var(--text-muted)" }}
+              >
+                Logout
+              </Link>
+            </>
           )}
           <Link href="/draw" className="btn-primary text-sm py-2 px-5">
             Draw Yours
@@ -146,7 +187,7 @@ export default function WallClient({ animals: initialAnimals, isLoggedIn }: { an
           onClose={closeModal}
           onAnimalUpdated={updateAnimal}
           onAnimalDeleted={removeAnimal}
-          isLoggedIn={isLoggedIn}
+          isAdmin={isAdmin}
         />
       )}
     </div>
@@ -223,6 +264,17 @@ function AnimalCard({ animal, onClick }: { animal: Animal; onClick: () => void }
             >
               Animated
             </Badge>
+          ) : isVideoStale(animal) ? (
+            <Badge
+              className="text-xs"
+              style={{
+                background: "rgba(255,45,120,0.15)",
+                border: "1px solid rgba(255,45,120,0.4)",
+                color: "var(--hot-pink)",
+              }}
+            >
+              Drawing
+            </Badge>
           ) : (
             <Badge
               className="text-xs"
@@ -266,14 +318,15 @@ function AnimalModal({
   onClose,
   onAnimalUpdated,
   onAnimalDeleted,
-  isLoggedIn,
+  isAdmin,
 }: {
   animal: Animal;
   onClose: () => void;
   onAnimalUpdated: (animal: Animal) => void;
   onAnimalDeleted: (id: string) => void;
-  isLoggedIn: boolean;
+  isAdmin: boolean;
 }) {
+  const showDrawingFallback = !animal.video_url && (!!animal.image_url && isVideoStale(animal));
   const handle = animal.github_handle.startsWith("@") ? animal.github_handle : `@${animal.github_handle}`;
   const [postState, setPostState] = useState<
     { type: "idle" } | { type: "posting" } | { type: "success" } | { type: "error"; message: string }
@@ -421,6 +474,24 @@ function AnimalModal({
                   playsInline
                   className="w-full h-full object-cover"
                 />
+              ) : showDrawingFallback && animal.image_url ? (
+                <div className="relative w-full h-full p-4">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={animal.image_url}
+                    alt={`${handle}'s party animal`}
+                    className="w-full h-full object-contain"
+                  />
+                  <span
+                    className="absolute bottom-3 left-1/2 -translate-x-1/2 text-xs px-2 py-1 rounded"
+                    style={{
+                      color: "var(--gold)",
+                      background: "rgba(0,0,0,0.55)",
+                    }}
+                  >
+                    Showing original drawing
+                  </span>
+                </div>
               ) : (
                 <div className="flex flex-col items-center gap-3">
                   <Skeleton className="w-24 h-24 rounded-full" />
@@ -439,23 +510,28 @@ function AnimalModal({
           style={{ borderColor: "var(--border)" }}
         >
           <div className="flex flex-col gap-2">
-            <button
-              onClick={handlePostToGitHub}
-              disabled={!animal.video_url || postState.type === "posting"}
-              className="btn-primary text-sm px-5 py-2 border-0"
-              style={{
-                background:
+            {isAdmin && (
+              <button
+                onClick={handlePostToGitHub}
+                disabled={
+                  (!animal.video_url && !animal.image_url) ||
                   postState.type === "posting"
-                    ? "rgba(255,45,120,0.4)"
-                    : "linear-gradient(135deg, var(--hot-pink), var(--electric-purple))",
-              }}
-            >
-              {postState.type === "posting"
-                ? "Posting..."
-                : animal.status === "posted"
-                  ? "Post to GitHub Again"
-                  : "Post to GitHub"}
-            </button>
+                }
+                className="btn-primary text-sm px-5 py-2 border-0"
+                style={{
+                  background:
+                    postState.type === "posting"
+                      ? "rgba(255,45,120,0.4)"
+                      : "linear-gradient(135deg, var(--hot-pink), var(--electric-purple))",
+                }}
+              >
+                {postState.type === "posting"
+                  ? "Posting..."
+                  : animal.status === "posted"
+                    ? "Post to GitHub Again"
+                    : "Post to GitHub"}
+              </button>
+            )}
             {postState.type === "error" && (
               <span className="text-xs" style={{ color: "var(--hot-pink)" }}>
                 {postState.message}
@@ -483,9 +559,15 @@ function AnimalModal({
               className="text-sm font-semibold"
               style={{ color: animal.status === "posted" ? "var(--neon-cyan)" : "var(--text-muted)" }}
             >
-              {animal.status === "posted" ? "Posted to GitHub" : "Ready to share"}
+              {animal.status === "posted"
+                ? "Posted to GitHub"
+                : animal.video_url
+                  ? "Ready to share"
+                  : showDrawingFallback
+                    ? "Drawing on the wall"
+                    : "Animating…"}
             </div>
-            {isLoggedIn && (
+            {isAdmin && (
               <button
                 onClick={handleDelete}
                 disabled={deleteState === "deleting"}
