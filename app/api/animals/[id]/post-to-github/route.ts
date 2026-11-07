@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { auth0 } from '@/lib/auth0'
 import { getAdminSession } from '@/lib/admin'
 import { getAnimalById, updateAnimal } from '@/lib/db'
 import { createAnimalIssue } from '@/lib/github-post'
+import { getAdminGitHubToken } from '@/lib/github-token'
 
 export async function POST(
   _request: NextRequest,
@@ -27,21 +27,16 @@ export async function POST(
       )
     }
 
-    let token: string
-    try {
-      ;({ token } = await auth0.getAccessTokenForConnection({
-        connection: 'github',
-      }))
-    } catch (err) {
-      console.error('[post-to-github] Token Vault miss', err)
+    const github = await getAdminGitHubToken()
+    if ('error' in github) {
       return NextResponse.json(
-        { error: 'Connect GitHub in Settings first' },
-        { status: 409 },
+        { error: github.error },
+        { status: github.status },
       )
     }
 
     const issue = await createAnimalIssue({
-      token,
+      token: github.token,
       githubHandle: animal.github_handle,
       imageUrl: animal.image_url ?? undefined,
       videoUrl: animal.video_url ?? undefined,
@@ -49,7 +44,10 @@ export async function POST(
 
     await updateAnimal(id, { status: 'posted', issue_url: issue.url })
 
-    return NextResponse.json({ issueUrl: issue.url })
+    return NextResponse.json({
+      issueUrl: issue.url,
+      source: github.source,
+    })
   } catch (err) {
     console.error('[POST /api/animals/[id]/post-to-github]', err)
     return NextResponse.json(

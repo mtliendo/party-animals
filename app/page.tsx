@@ -53,7 +53,7 @@ export default async function Home() {
             </>
           ) : (
             <Link
-              href='/auth/login?returnTo=/settings'
+              href='/auth/login?connection=github&returnTo=/settings'
               className='text-sm hover:text-white transition-colors'
               style={{ color: 'var(--text-muted)' }}
             >
