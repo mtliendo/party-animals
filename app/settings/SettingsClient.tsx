@@ -21,10 +21,12 @@ type User = {
 export default function SettingsClient({
   user,
   githubConnected,
+  githubSource,
   userId,
 }: {
   user: User
   githubConnected: boolean
+  githubSource: 'token-vault' | 'github-login' | 'env' | null
   userId: string
 }) {
   return (
@@ -78,7 +80,7 @@ export default function SettingsClient({
               <span className='gradient-text'>SETTINGS</span>
             </h1>
             <p style={{ color: 'var(--text-muted)' }}>
-              Admin only. Connect GitHub via Auth0 Token Vault so you can post animals to the gallery.
+              Admin only. Sign in with GitHub to post, or connect Token Vault once a GitHub App is configured.
             </p>
           </div>
 
@@ -155,7 +157,11 @@ export default function SettingsClient({
                       color: 'var(--neon-cyan)',
                     }}
                   >
-                    Connected
+                    {githubSource === 'token-vault'
+                      ? 'Token Vault'
+                      : githubSource === 'env'
+                        ? 'Server token'
+                        : 'GitHub login'}
                   </Badge>
                 ) : (
                   <Badge
@@ -171,13 +177,17 @@ export default function SettingsClient({
               </div>
               <CardDescription style={{ color: 'var(--text-muted)' }}>
                 {githubConnected
-                  ? 'Your GitHub account is connected. Your party animal will be posted to the gallery as a GitHub issue.'
-                  : 'Connect your GitHub account to post your party animal to the gallery.'}
+                  ? githubSource === 'token-vault'
+                    ? 'Token Vault has a GitHub token. Issues will be posted with a short-lived credential.'
+                    : githubSource === 'env'
+                      ? 'Posting will use GITHUB_POSTING_TOKEN on the server. Sign in with GitHub so the talk can use your login token instead.'
+                      : 'Posting will use your GitHub login token. Token Vault still needs a GitHub App for refresh tokens.'
+                  : 'Sign in with GitHub to post issues now. Connect GitHub (Token Vault) after swapping to a GitHub App.'}
               </CardDescription>
             </CardHeader>
             <CardContent>
-              {githubConnected ? (
-                <div className='flex flex-col gap-3'>
+              <div className='flex flex-col gap-3'>
+                {githubConnected ? (
                   <div
                     className='rounded-lg p-4 text-sm'
                     style={{
@@ -186,25 +196,26 @@ export default function SettingsClient({
                       color: 'var(--neon-cyan)',
                     }}
                   >
-                    GitHub credentials are securely stored in Auth0 Token Vault.
-                    Your party animal will be posted to the gallery — you never share
-                    passwords.
+                    {githubSource === 'token-vault'
+                      ? 'GitHub credentials are stored in Auth0 Token Vault. The agent never holds long-lived secrets.'
+                      : githubSource === 'env'
+                        ? 'A server token is configured as a talk fallback. Sign in with GitHub to post as the admin login instead.'
+                        : 'Ready to post with your GitHub login. Token Vault Connect may still fail until the connection uses a GitHub App.'}
                   </div>
-                  <a
-                    href='/auth/connect?connection=github&returnTo=/settings'
-                    className='btn-secondary w-full justify-center text-center'
-                  >
-                    Reconnect GitHub
-                  </a>
-                </div>
-              ) : (
+                ) : null}
+                <a
+                  href='/auth/login?connection=github&returnTo=/settings'
+                  className='btn-primary w-full justify-center text-center'
+                >
+                  {githubConnected ? 'Re-sign in with GitHub' : 'Sign in with GitHub'}
+                </a>
                 <a
                   href='/auth/connect?connection=github&returnTo=/settings'
-                  className='btn-primary w-full justify-center'
+                  className='btn-secondary w-full justify-center text-center'
                 >
-                  Connect GitHub Account
+                  Connect GitHub (Token Vault)
                 </a>
-              )}
+              </div>
             </CardContent>
           </Card>
 
