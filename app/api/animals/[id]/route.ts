@@ -3,11 +3,11 @@ import { getAdminSession } from '@/lib/admin'
 import { deleteAnimal } from '@/lib/db'
 
 export async function DELETE(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const session = await getAdminSession()
+    const session = await getAdminSession(req)
     if (!session) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }

@@ -5,11 +5,11 @@ import { createAnimalIssue } from '@/lib/github-post'
 import { getAdminGitHubToken } from '@/lib/github-token'
 
 export async function POST(
-  _request: NextRequest,
+  request: NextRequest,
   ctx: { params: Promise<{ id: string }> },
 ) {
   try {
-    const session = await getAdminSession()
+    const session = await getAdminSession(request)
     if (!session) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
@@ -27,7 +27,7 @@ export async function POST(
       )
     }
 
-    const github = await getAdminGitHubToken()
+    const github = await getAdminGitHubToken(request)
     if ('error' in github) {
       return NextResponse.json(
         { error: github.error },
