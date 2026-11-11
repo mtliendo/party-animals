@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
+import { DrawYoursCard } from "@/components/DrawYoursCard";
 import type { Animal } from "@/lib/db";
 
 const VIDEO_FALLBACK_AFTER_MS = 3 * 60 * 1000;
@@ -16,7 +17,15 @@ function isVideoStale(animal: Animal) {
   return Date.now() - created > VIDEO_FALLBACK_AFTER_MS;
 }
 
-export default function WallClient({ animals: initialAnimals, isAdmin }: { animals: Animal[]; isAdmin: boolean }) {
+export default function WallClient({
+  animals: initialAnimals,
+  isAdmin,
+  qrSvg,
+}: {
+  animals: Animal[];
+  isAdmin: boolean;
+  qrSvg: string;
+}) {
   const [animals, setAnimals] = useState<Animal[]>(initialAnimals);
   const [selected, setSelected] = useState<Animal | null>(null);
 
@@ -160,16 +169,13 @@ export default function WallClient({ animals: initialAnimals, isAdmin }: { anima
           </Badge>
         </div>
 
-        {/* Grid */}
-        {animals.length === 0 ? (
-          <EmptyState />
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {animals.map((animal) => (
-              <AnimalCard key={animal.id} animal={animal} onClick={() => setSelected(animal)} />
-            ))}
-          </div>
-        )}
+        {/* Grid — invite tile first, not counted in the badge */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          <DrawYoursCard qrSvg={qrSvg} />
+          {animals.map((animal) => (
+            <AnimalCard key={animal.id} animal={animal} onClick={() => setSelected(animal)} />
+          ))}
+        </div>
       </main>
 
       <footer
