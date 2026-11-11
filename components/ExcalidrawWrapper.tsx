@@ -16,6 +16,7 @@ type FreedrawElement = any
 
 interface Props {
   excalidrawAPI?: (api: ExcalidrawImperativeAPI) => void
+  onStableScene?: (elementsJson: string) => void
 }
 
 const FREEDRAW_TOOL = {
@@ -73,10 +74,12 @@ function pinFreedrawLiftToLastMove(
   })
 }
 
-export function ExcalidrawWrapper({ excalidrawAPI }: Props) {
+export function ExcalidrawWrapper({ excalidrawAPI, onStableScene }: Props) {
   const hostRef = useRef<HTMLDivElement>(null)
   const apiRef = useRef<ExcalidrawImperativeAPI | null>(null)
   const lastTouchRef = useRef<TouchPoint | null>(null)
+  const onStableSceneRef = useRef(onStableScene)
+  onStableSceneRef.current = onStableScene
 
   const handleAPI = useCallback(
     (api: ExcalidrawImperativeAPI) => {
@@ -106,12 +109,13 @@ export function ExcalidrawWrapper({ excalidrawAPI }: Props) {
     if (!host) return
 
     const onPointerDown = (event: PointerEvent) => {
-      if (!isTouchLike(event)) return
       if (!host.contains(event.target as Node)) return
-      lastTouchRef.current = {
-        x: event.clientX,
-        y: event.clientY,
-        id: event.pointerId,
+      if (isTouchLike(event)) {
+        lastTouchRef.current = {
+          x: event.clientX,
+          y: event.clientY,
+          id: event.pointerId,
+        }
       }
     }
 
@@ -127,34 +131,56 @@ export function ExcalidrawWrapper({ excalidrawAPI }: Props) {
     }
 
     const onPointerLift = (event: PointerEvent) => {
-      if (!isTouchLike(event)) return
       const last = lastTouchRef.current
-      if (!last || last.id !== event.pointerId) return
+      const isStroke = last?.id === event.pointerId || host.contains(event.target as Node)
+      if (isTouchLike(event) && last && last.id === event.pointerId) {
+        // Excalidraw always appends pointerup scene coords as an extra freedraw
+        // point. Touch/pen lift reports a shifted contact centroid, which shows
+        // up as a jump at the end of the stroke. Pin the lift to the last move.
+        rewriteClientPoint(event, last.x, last.y)
+      }
 
-      // Excalidraw always appends pointerup scene coords as an extra freedraw
-      // point. Touch/pen lift reports a shifted contact centroid, which shows
-      // up as a jump at the end of the stroke. Pin the lift to the last move.
-      rewriteClientPoint(event, last.x, last.y)
+      if (!isStroke) return
 
       queueMicrotask(() => {
         if (apiRef.current) {
-          pinFreedrawLiftToLastMove(apiRef.current, last)
+          if (last && last.id === event.pointerId) {
+            pinFreedrawLiftToLastMove(apiRef.current, last)
+          }
+          const elements = apiRef.current.getSceneElements()
+          onStableSceneRef.current?.(JSON.stringify(elements))
         }
-        if (lastTouchRef.current?.id === last.id) {
+        if (lastTouchRef.current?.id === event.pointerId) {
           lastTouchRef.current = null
         }
       })
+    }
+
+    const blockPageGesture = (event: Event) => {
+      if (!host.contains(event.target as Node)) return
+      event.preventDefault()
+    }
+
+    const blockPinch = (event: TouchEvent) => {
+      if (!host.contains(event.target as Node)) return
+      if (event.touches.length > 1) event.preventDefault()
     }
 
     window.addEventListener('pointerdown', onPointerDown, true)
     window.addEventListener('pointermove', onPointerMove, true)
     window.addEventListener('pointerup', onPointerLift, true)
     window.addEventListener('pointercancel', onPointerLift, true)
+    host.addEventListener('gesturestart', blockPageGesture, { passive: false })
+    host.addEventListener('gesturechange', blockPageGesture, { passive: false })
+    host.addEventListener('touchmove', blockPinch, { passive: false })
     return () => {
       window.removeEventListener('pointerdown', onPointerDown, true)
       window.removeEventListener('pointermove', onPointerMove, true)
       window.removeEventListener('pointerup', onPointerLift, true)
       window.removeEventListener('pointercancel', onPointerLift, true)
+      host.removeEventListener('gesturestart', blockPageGesture)
+      host.removeEventListener('gesturechange', blockPageGesture)
+      host.removeEventListener('touchmove', blockPinch)
     }
   }, [])
 
@@ -163,9 +189,14 @@ export function ExcalidrawWrapper({ excalidrawAPI }: Props) {
       <Excalidraw
         excalidrawAPI={handleAPI}
         theme='light'
+        handleKeyboardGlobally
+        name='Auth0 welcomes AIE'
         initialData={{
           appState: {
             activeTool: FREEDRAW_TOOL,
+            currentItemStrokeColor: '#1e1e1e',
+            currentItemStrokeWidth: 2,
+            currentItemOpacity: 100,
           },
         }}
         UIOptions={{
@@ -174,6 +205,12 @@ export function ExcalidrawWrapper({ excalidrawAPI }: Props) {
             loadScene: false,
             saveToActiveFile: false,
             saveAsImage: false,
+            toggleTheme: false,
+            clearCanvas: false,
+            changeViewBackgroundColor: false,
+          },
+          tools: {
+            image: false,
           },
         }}
       />
