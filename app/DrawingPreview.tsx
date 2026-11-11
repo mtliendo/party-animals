@@ -1,14 +1,17 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
+import { useEffect, useId, useRef } from 'react'
 
 /**
  * Lightweight looping sketch of a party animal on an Excalidraw-like board.
  * No Excalidraw runtime — SVG + rAF only, so the homepage stays fast on phones
  * and projectors.
  */
-export function DrawingPreview() {
+export function DrawingPreview({ compact = false }: { compact?: boolean }) {
   const svgRef = useRef<SVGSVGElement>(null)
+  const uid = useId().replace(/:/g, '')
+  const dotsId = `excalidraw-dots-${uid}`
+  const glowId = `alive-glow-${uid}`
 
   useEffect(() => {
     const svg = svgRef.current
@@ -87,7 +90,13 @@ export function DrawingPreview() {
   }, [])
 
   return (
-    <figure className='drawing-preview w-full max-w-[28rem] mx-auto lg:mx-0'>
+    <figure
+      className={
+        compact
+          ? 'drawing-preview drawing-preview--tile'
+          : 'drawing-preview w-full max-w-[28rem] mx-auto lg:mx-0'
+      }
+    >
       <div className='drawing-preview-frame'>
         <div className='drawing-preview-menubar'>
           <span className='drawing-preview-dots' aria-hidden>
@@ -110,20 +119,21 @@ export function DrawingPreview() {
           <svg
             ref={svgRef}
             viewBox='0 0 360 280'
+            preserveAspectRatio={compact ? 'xMidYMid slice' : 'xMidYMid meet'}
             className='drawing-preview-svg'
             role='img'
             aria-label='Preview of a hand-drawn party animal being sketched, then coming to life'
           >
             <defs>
               <pattern
-                id='excalidraw-dots'
+                id={dotsId}
                 width='18'
                 height='18'
                 patternUnits='userSpaceOnUse'
               >
                 <circle cx='1' cy='1' r='0.9' fill='#c9c9d6' />
               </pattern>
-              <filter id='alive-glow' x='-20%' y='-20%' width='140%' height='140%'>
+              <filter id={glowId} x='-20%' y='-20%' width='140%' height='140%'>
                 <feGaussianBlur stdDeviation='2.4' result='blur' />
                 <feMerge>
                   <feMergeNode in='blur' />
@@ -133,7 +143,7 @@ export function DrawingPreview() {
             </defs>
 
             <rect width='360' height='280' fill='#f8f8f3' />
-            <rect width='360' height='280' fill='url(#excalidraw-dots)' />
+            <rect width='360' height='280' fill={`url(#${dotsId})`} />
 
             <g
               fill='none'
@@ -184,6 +194,7 @@ export function DrawingPreview() {
                 fontSize='13'
                 fontFamily='var(--font-bangers), cursive'
                 letterSpacing='1.5'
+                filter={`url(#${glowId})`}
               >
                 AI ANIMATES
               </text>
@@ -200,9 +211,11 @@ export function DrawingPreview() {
           </svg>
         </div>
       </div>
-      <figcaption>
-        Sketch on the canvas. Grok turns it into a looping video.
-      </figcaption>
+      {!compact && (
+        <figcaption>
+          Sketch on the canvas. Grok turns it into a looping video.
+        </figcaption>
+      )}
     </figure>
   )
 }
