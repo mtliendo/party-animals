@@ -11,12 +11,43 @@ import { SiteBrand } from "@/components/SiteBrand";
 import type { Animal } from "@/lib/db";
 
 const VIDEO_FALLBACK_AFTER_MS = 3 * 60 * 1000;
+const WALL_POLL_MS = 4000;
 
 function isVideoStale(animal: Animal) {
   if (animal.video_url) return false;
   const created = new Date(animal.created_at).getTime();
   if (Number.isNaN(created)) return false;
   return Date.now() - created > VIDEO_FALLBACK_AFTER_MS;
+}
+
+function sameAnimal(a: Animal, b: Animal) {
+  return (
+    a.id === b.id &&
+    a.video_url === b.video_url &&
+    a.image_url === b.image_url &&
+    a.status === b.status &&
+    a.issue_url === b.issue_url
+  );
+}
+
+function mergeWallAnimals(prev: Animal[], next: Animal[]): Animal[] {
+  const prevById = new Map(prev.map((animal) => [animal.id, animal]));
+  return next.map((animal) => {
+    const existing = prevById.get(animal.id);
+    if (existing && sameAnimal(existing, animal)) return existing;
+    return animal;
+  });
+}
+
+async function fetchWallAnimals(): Promise<Animal[] | null> {
+  const res = await fetch("/api/animals", {
+    cache: "no-store",
+    headers: { Accept: "application/json" },
+  });
+  if (!res.ok) return null;
+  const data: unknown = await res.json();
+  if (!Array.isArray(data)) return null;
+  return data as Animal[];
 }
 
 export default function WallClient({
@@ -52,6 +83,8 @@ export default function WallClient({
   }, [selected, closeModal]);
 
   const kickedRef = useRef(new Set<string>());
+  const animalsRef = useRef(animals);
+  animalsRef.current = animals;
 
   useEffect(() => {
     function kickPending(list: Animal[]) {
@@ -67,31 +100,36 @@ export default function WallClient({
       }
     }
 
-    kickPending(animals);
-
-    const hasPendingVideo = animals.some((a) => !a.video_url);
-    if (!hasPendingVideo) return;
-
-    const interval = setInterval(async () => {
+    async function refreshWall() {
       try {
-        const res = await fetch("/api/animals");
-        if (!res.ok) return;
-        const fresh: Animal[] = await res.json();
-        setAnimals(fresh);
+        const fresh = await fetchWallAnimals();
+        if (!fresh) return;
+        setAnimals((current) => mergeWallAnimals(current, fresh));
         setSelected((current) => {
           if (!current) return current;
-          return fresh.find((a) => a.id === current.id) ?? current;
+          return fresh.find((animal) => animal.id === current.id) ?? current;
         });
         kickPending(fresh);
-        if (!fresh.some((a) => !a.video_url)) clearInterval(interval);
       } catch {
         // silently ignore transient fetch errors
       }
-    }, 5000);
+    }
 
-    return () => clearInterval(interval);
-    // Kick + poll once on mount; the interval refreshes the list.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    kickPending(animalsRef.current);
+    void refreshWall();
+    const interval = window.setInterval(refreshWall, WALL_POLL_MS);
+
+    function onVisible() {
+      if (document.visibilityState === "visible") void refreshWall();
+    }
+    document.addEventListener("visibilitychange", onVisible);
+    window.addEventListener("pageshow", onVisible);
+
+    return () => {
+      window.clearInterval(interval);
+      document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("pageshow", onVisible);
+    };
   }, []);
 
   return (
@@ -225,6 +263,11 @@ function AnimalCard({ animal, onClick }: { animal: Animal; onClick: () => void }
         ) : (
           <div className="w-full h-full flex items-center justify-center">
             <Skeleton className="w-full h-full" />
+          </div>
+        )}
+        {!animal.video_url && animal.image_url && !isVideoStale(animal) && (
+          <div className="animal-generating" aria-live="polite">
+            Generating
           </div>
         )}
 

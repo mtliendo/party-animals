@@ -4,7 +4,8 @@ import { getSessionFlags } from "@/lib/admin";
 import { getAllAnimals } from "@/lib/db";
 import WallClient from "./WallClient";
 
-export const revalidate = 30;
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 export default async function WallPage() {
   const [animals, { isAdmin }, qrSvg] = await Promise.all([

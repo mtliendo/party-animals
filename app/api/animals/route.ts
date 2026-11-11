@@ -6,16 +6,23 @@ import { v4 as uuidv4 } from 'uuid'
 
 export const maxDuration = 300
 export const runtime = 'nodejs'
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
+
+const NO_STORE = {
+  'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0',
+  Pragma: 'no-cache',
+}
 
 export async function GET() {
   try {
     const animals = await getAllAnimals()
-    return NextResponse.json(animals)
+    return NextResponse.json(animals, { headers: NO_STORE })
   } catch (err) {
     console.error('[GET /api/animals]', err)
     return NextResponse.json(
       { error: 'Failed to fetch animals' },
-      { status: 500 },
+      { status: 500, headers: NO_STORE },
     )
   }
 }
