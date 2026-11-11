@@ -8,6 +8,7 @@ import {
   viewportCoordsToSceneCoords,
 } from '@excalidraw/excalidraw'
 import '@excalidraw/excalidraw/index.css'
+import { SITE_NAME } from '@/lib/brand'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type ExcalidrawImperativeAPI = any
@@ -190,7 +191,7 @@ export function ExcalidrawWrapper({ excalidrawAPI, onStableScene }: Props) {
         excalidrawAPI={handleAPI}
         theme='light'
         handleKeyboardGlobally
-        name='Auth0 welcomes AIE'
+        name={SITE_NAME}
         initialData={{
           appState: {
             activeTool: FREEDRAW_TOOL,

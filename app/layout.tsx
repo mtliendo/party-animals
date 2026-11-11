@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Inter, Bangers, Geist } from "next/font/google";
 import "./globals.css";
 import { cn } from "@/lib/utils";
+import { SITE_DESCRIPTION, SITE_NAME } from "@/lib/brand";
 
 const geist = Geist({subsets:['latin'],variable:'--font-sans'});
 
@@ -15,10 +16,6 @@ const bangers = Bangers({
   subsets: ["latin"],
   weight: "400",
 });
-
-const SITE_NAME = "Auth0 welcomes AIE";
-const SITE_DESCRIPTION =
-  "Auth0 welcomes AIE. Draw your animal, AI brings it to life, and the wall never forgets.";
 
 export const metadata: Metadata = {
   title: SITE_NAME,
