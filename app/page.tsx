@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { getSessionFlags } from '@/lib/admin'
 import { DrawingPreview } from './DrawingPreview'
+import { SiteBrand } from '@/components/SiteBrand'
 
 export default async function Home() {
   const { isAdmin } = await getSessionFlags()
@@ -11,20 +12,9 @@ export default async function Home() {
       style={{ background: 'var(--bg-dark)' }}
     >
       {/* Nav */}
-      <nav
-        className='flex items-center justify-between px-6 py-4 border-b'
-        style={{ borderColor: 'var(--border)' }}
-      >
-        <span
-          className='text-2xl tracking-wider'
-          style={{
-            fontFamily: 'var(--font-bangers)',
-            color: 'var(--hot-pink)',
-          }}
-        >
-          PARTY ANIMALS
-        </span>
-        <div className='flex items-center gap-4'>
+      <nav className='app-nav'>
+        <SiteBrand />
+        <div className='app-nav-links'>
           <Link
             href='/wall'
             className='text-sm hover:text-white transition-colors'
@@ -140,7 +130,7 @@ export default async function Home() {
               step: '01',
               icon: '✏️',
               title: 'Draw',
-              desc: 'Sketch your party animal on the canvas. Get weird with it.',
+              desc: 'Sketch your animal on the canvas. Get weird with it.',
               color: 'var(--hot-pink)',
             },
             {

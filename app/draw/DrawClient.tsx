@@ -1,12 +1,13 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import Link from "next/link";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
+import { SiteBrand } from "@/components/SiteBrand";
+import { DrawToolbar } from "@/components/DrawToolbar";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type ExcalidrawImperativeAPI = any;
@@ -29,6 +30,73 @@ export default function DrawClient({ isAdmin }: { isAdmin: boolean }) {
   const onExcalidrawAPI = useCallback((api: ExcalidrawImperativeAPI) => setExcalidrawAPI(api), []);
   const [githubHandle, setGithubHandle] = useState("");
   const [state, setState] = useState<SubmitState>({ type: "idle" });
+  const [tool, setTool] = useState<"freedraw" | "eraser">("freedraw");
+  const [color, setColor] = useState("#1e1e1e");
+  const pastRef = useRef<string[]>(["[]"]);
+  const futureRef = useRef<string[]>([]);
+  const restoringRef = useRef(false);
+
+  const onStableScene = useCallback((json: string) => {
+    if (restoringRef.current) return;
+    if (pastRef.current.at(-1) === json) return;
+    pastRef.current.push(json);
+    if (pastRef.current.length > 50) pastRef.current.shift();
+    futureRef.current = [];
+  }, []);
+
+  const applyScene = useCallback((json: string) => {
+    if (!excalidrawAPI) return;
+    restoringRef.current = true;
+    excalidrawAPI.updateScene({
+      elements: JSON.parse(json),
+      captureUpdate: "NEVER",
+    });
+    queueMicrotask(() => {
+      restoringRef.current = false;
+    });
+  }, [excalidrawAPI]);
+
+  const handleTool = useCallback((next: "freedraw" | "eraser") => {
+    setTool(next);
+    excalidrawAPI?.setActiveTool({ type: next });
+  }, [excalidrawAPI]);
+
+  const handleColor = useCallback((next: string) => {
+    setColor(next);
+    setTool("freedraw");
+    excalidrawAPI?.updateScene({
+      appState: { currentItemStrokeColor: next },
+    });
+    excalidrawAPI?.setActiveTool({ type: "freedraw" });
+  }, [excalidrawAPI]);
+
+  const handleUndo = useCallback(() => {
+    if (pastRef.current.length < 2) return;
+    const current = pastRef.current.pop();
+    if (!current) return;
+    futureRef.current.push(current);
+    applyScene(pastRef.current.at(-1) ?? "[]");
+  }, [applyScene]);
+
+  const handleRedo = useCallback(() => {
+    const next = futureRef.current.pop();
+    if (!next) return;
+    pastRef.current.push(next);
+    applyScene(next);
+  }, [applyScene]);
+
+  const handleClear = useCallback(() => {
+    if (!excalidrawAPI) return;
+    const json = JSON.stringify(excalidrawAPI.getSceneElements());
+    onStableScene(json);
+    excalidrawAPI.resetScene();
+    excalidrawAPI.setActiveTool({ type: "freedraw" });
+    excalidrawAPI.updateScene({
+      appState: { currentItemStrokeColor: color },
+    });
+    setTool("freedraw");
+    onStableScene("[]");
+  }, [excalidrawAPI, color, onStableScene]);
 
   async function handleSubmit() {
     if (!githubHandle.trim()) {
@@ -89,29 +157,19 @@ export default function DrawClient({ isAdmin }: { isAdmin: boolean }) {
   }
 
   return (
-    <div className="flex-1 flex flex-col overflow-hidden min-h-0" style={{ background: "var(--bg-dark)" }}>
-      {/* Nav */}
-      <nav
-        className="flex items-center justify-between px-6 py-4 border-b shrink-0"
-        style={{ borderColor: "var(--border)" }}
-      >
-        <Link
-          href="/"
-          className="text-2xl tracking-wider hover:opacity-80 transition-opacity"
-          style={{ fontFamily: "var(--font-bangers)", color: "var(--hot-pink)" }}
-        >
-          PARTY ANIMALS
-        </Link>
-        <div className="flex items-center gap-4">
-          <Link href="/wall" className="text-sm hover:text-white transition-colors" style={{ color: "var(--text-muted)" }}>
+    <div className="draw-app">
+      <nav className="draw-nav">
+        <SiteBrand />
+        <div className="draw-nav-links">
+          <Link href="/wall" className="draw-nav-link">
             The Wall
           </Link>
           {isAdmin && (
             <>
-              <Link href="/settings" className="text-sm hover:text-white transition-colors" style={{ color: "var(--text-muted)" }}>
+              <Link href="/settings" className="draw-nav-link">
                 Settings
               </Link>
-              <Link href="/auth/logout" className="text-sm hover:text-white transition-colors" style={{ color: "var(--text-muted)" }}>
+              <Link href="/auth/logout" className="draw-nav-link">
                 Logout
               </Link>
             </>
@@ -119,45 +177,40 @@ export default function DrawClient({ isAdmin }: { isAdmin: boolean }) {
         </div>
       </nav>
 
-      <main className="flex-1 flex flex-col lg:flex-row overflow-hidden min-h-0">
-        {/* Canvas */}
-        <div className="flex-1 relative overflow-hidden min-h-0 min-w-0">
-          <ExcalidrawWrapper
-            excalidrawAPI={onExcalidrawAPI}
+      <main className="draw-main">
+        <section className="draw-stage">
+          <DrawToolbar
+            api={excalidrawAPI}
+            tool={tool}
+            color={color}
+            onTool={handleTool}
+            onColor={handleColor}
+            onUndo={handleUndo}
+            onRedo={handleRedo}
+            onClear={handleClear}
           />
-        </div>
+          <div className="draw-canvas">
+            <ExcalidrawWrapper
+              excalidrawAPI={onExcalidrawAPI}
+              onStableScene={onStableScene}
+            />
+          </div>
+        </section>
 
-        {/* Sidebar — scrollable; capped at 50vh on mobile, full height on desktop */}
-        <div
-          className="w-full lg:w-80 shrink-0 flex flex-col gap-6 p-6 border-t lg:border-t-0 lg:border-l overflow-y-auto max-h-[50vh] lg:max-h-none"
-          style={{ borderColor: "var(--border)", background: "var(--bg-card)" }}
-        >
-          <div>
-            <h1
-              className="text-3xl tracking-wide mb-1"
-              style={{ fontFamily: "var(--font-bangers)" }}
-            >
-              <span className="gradient-text">DRAW YOUR</span>
-              <br />
-              <span style={{ color: "var(--neon-cyan)" }}>PARTY ANIMAL</span>
-            </h1>
-            <p className="text-sm" style={{ color: "var(--text-muted)" }}>
-              Sketch anything wild. AI animates it into a video that hits the wall — and GitHub.
+        <aside className="draw-sheet">
+          <div className="draw-sheet-copy">
+            <h1 className="draw-heading">Draw your animal</h1>
+            <p className="draw-heading-sub">
+              Sketch anything wild. AI animates it onto the wall.
             </p>
           </div>
 
-          <Separator className="opacity-20" />
-
-          {/* GitHub handle input */}
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="github-handle" className="text-sm font-semibold tracking-wide" style={{ color: "var(--text-primary)" }}>
-              Your GitHub Username
+          <div className="draw-sheet-form">
+            <Label htmlFor="github-handle" className="draw-label">
+              GitHub username
             </Label>
-            <div className="relative">
-              <span
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-bold select-none"
-                style={{ color: "var(--text-muted)" }}
-              >
+            <div className="draw-handle">
+              <span className="draw-handle-at" aria-hidden>
                 @
               </span>
               <Input
@@ -168,69 +221,33 @@ export default function DrawClient({ isAdmin }: { isAdmin: boolean }) {
                   if (state.type === "error") setState({ type: "idle" });
                 }}
                 placeholder="yourusername"
-                className="pl-7"
-                style={{
-                  background: "var(--bg-dark)",
-                  border: "1px solid var(--border)",
-                  color: "var(--text-primary)",
-                }}
+                autoComplete="username"
+                enterKeyHint="done"
+                className="draw-handle-input"
                 disabled={state.type === "submitting"}
               />
             </div>
-            <p className="text-xs" style={{ color: "var(--text-muted)" }}>
-              You&apos;ll be mentioned in the GitHub issue when your animal is posted.
-            </p>
           </div>
 
-          {/* Tips */}
-          <div
-            className="rounded-xl p-4 flex flex-col gap-2"
-            style={{
-              background: "rgba(176,38,255,0.06)",
-              border: "1px solid rgba(176,38,255,0.2)",
-            }}
-          >
-            <p
-              className="text-xs font-bold tracking-widest uppercase"
-              style={{ color: "var(--electric-purple)" }}
-            >
-              Tips
-            </p>
-            {[
-              "Big shapes = better animation",
-              "Bold lines over fine details",
-              "Keep it fun — no stick figures… unless that is your thing",
-            ].map((tip) => (
-              <p key={tip} className="text-xs flex gap-2" style={{ color: "var(--text-muted)" }}>
-                <span style={{ color: "var(--electric-purple)" }}>✦</span> {tip}
-              </p>
-            ))}
-          </div>
+          <details className="draw-tips">
+            <summary>Tips</summary>
+            <ul>
+              <li>Big shapes = better animation</li>
+              <li>Bold lines over fine details</li>
+              <li>Keep it fun — stick figures are welcome</li>
+            </ul>
+          </details>
 
-          {/* Error */}
           {state.type === "error" && (
-            <div
-              className="rounded-xl p-3 text-sm"
-              style={{
-                background: "rgba(255,45,120,0.1)",
-                border: "1px solid rgba(255,45,120,0.3)",
-                color: "var(--hot-pink)",
-              }}
-            >
+            <div className="draw-error" role="alert">
               {state.message}
             </div>
           )}
 
-          {/* Submit */}
           <Button
             onClick={handleSubmit}
             disabled={state.type === "submitting"}
-            className="w-full btn-primary border-0 mt-auto"
-            style={{
-              background: state.type === "submitting"
-                ? "rgba(255,45,120,0.4)"
-                : "linear-gradient(135deg, var(--hot-pink), var(--electric-purple))",
-            }}
+            className="draw-submit btn-primary border-0"
           >
             {state.type === "submitting" ? (
               <>
@@ -238,10 +255,10 @@ export default function DrawClient({ isAdmin }: { isAdmin: boolean }) {
                 Unleashing…
               </>
             ) : (
-              "Unleash Your Animal! 🐾"
+              "Unleash your animal"
             )}
           </Button>
-        </div>
+        </aside>
       </main>
     </div>
   );
@@ -339,7 +356,7 @@ function SuccessScreen({ githubHandle }: { githubHandle: string }) {
           <p className="text-base" style={{ color: "var(--text-muted)" }}>
             {allDone ? (
               <>
-                <span style={{ color: "var(--neon-cyan)" }}>@{githubHandle}</span>&apos;s party animal is on the wall. Animation keeps cooking in the background.
+                <span style={{ color: "var(--neon-cyan)" }}>@{githubHandle}</span>&apos;s animal is on the wall. Animation keeps cooking in the background.
               </>
             ) : (
               "Your drawing is in. AI is bringing it to life."

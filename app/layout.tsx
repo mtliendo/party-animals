@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter, Bangers, Geist } from "next/font/google";
 import "./globals.css";
 import { cn } from "@/lib/utils";
@@ -16,10 +16,32 @@ const bangers = Bangers({
   weight: "400",
 });
 
+const SITE_NAME = "Auth0 welcomes AIE";
+const SITE_DESCRIPTION =
+  "Auth0 welcomes AIE. Draw your animal, AI brings it to life, and the wall never forgets.";
+
 export const metadata: Metadata = {
-  title: "Auth0 welcomes AIE",
-  description:
-    "Auth0 welcomes AIE. Draw your party animal, AI brings it to life, and the wall never forgets.",
+  title: SITE_NAME,
+  applicationName: SITE_NAME,
+  description: SITE_DESCRIPTION,
+  openGraph: {
+    title: SITE_NAME,
+    description: SITE_DESCRIPTION,
+    siteName: SITE_NAME,
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: SITE_NAME,
+    description: SITE_DESCRIPTION,
+  },
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  themeColor: "#08080f",
 };
 
 export default function RootLayout({

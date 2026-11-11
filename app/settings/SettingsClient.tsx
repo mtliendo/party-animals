@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import { SiteBrand } from '@/components/SiteBrand'
 import {
   Card,
   CardContent,
@@ -35,21 +36,9 @@ export default function SettingsClient({
       style={{ background: 'var(--bg-dark)' }}
     >
       {/* Nav */}
-      <nav
-        className='flex items-center justify-between px-6 py-4 border-b'
-        style={{ borderColor: 'var(--border)' }}
-      >
-        <Link
-          href='/'
-          className='text-2xl tracking-wider hover:opacity-80 transition-opacity'
-          style={{
-            fontFamily: 'var(--font-bangers)',
-            color: 'var(--hot-pink)',
-          }}
-        >
-          PARTY ANIMALS
-        </Link>
-        <div className='flex items-center gap-4'>
+      <nav className='app-nav'>
+        <SiteBrand />
+        <div className='app-nav-links'>
           <Link href='/draw' className='btn-secondary text-sm py-2 px-5'>
             Draw
           </Link>

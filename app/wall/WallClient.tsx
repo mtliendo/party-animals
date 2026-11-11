@@ -7,6 +7,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
 import { DrawYoursCard } from "@/components/DrawYoursCard";
 import { WallQrCard } from "@/components/WallQrCard";
+import { SiteBrand } from "@/components/SiteBrand";
 import type { Animal } from "@/lib/db";
 
 const VIDEO_FALLBACK_AFTER_MS = 3 * 60 * 1000;
@@ -96,18 +97,9 @@ export default function WallClient({
   return (
     <div className="min-h-screen flex flex-col" style={{ background: "var(--bg-dark)" }}>
       {/* Nav */}
-      <nav
-        className="flex items-center justify-between px-6 py-4 border-b"
-        style={{ borderColor: "var(--border)" }}
-      >
-        <Link
-          href="/"
-          className="text-2xl tracking-wider hover:opacity-80 transition-opacity"
-          style={{ fontFamily: "var(--font-bangers)", color: "var(--hot-pink)" }}
-        >
-          PARTY ANIMALS
-        </Link>
-        <div className="flex items-center gap-4">
+      <nav className="app-nav">
+        <SiteBrand />
+        <div className="app-nav-links">
           <span
             className="text-sm font-semibold tracking-widest uppercase"
             style={{ color: "var(--neon-cyan)" }}
@@ -621,7 +613,7 @@ function EmptyState() {
         The wall is empty
       </h2>
       <p style={{ color: "var(--text-muted)" }}>
-        Be the first to unleash your party animal.
+        Be the first to unleash your animal.
       </p>
       <Link href="/draw" className="btn-primary">
         Draw Your Animal 🎨
