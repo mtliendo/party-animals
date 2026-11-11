@@ -178,12 +178,163 @@ body {
   box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4), 0 0 20px rgba(255, 45, 120, 0.15);
 }
 
-/* Gradient text */
+/* Gradient text
+   Bangers' round glyphs (the "0" in Auth0) overflow the em-box. Tight
+   line-height + background-clip without padding clips the last character. */
 .gradient-text {
   background: linear-gradient(90deg, var(--hot-pink), var(--neon-cyan));
   -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
   background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+  display: inline-block;
+  line-height: 1.18;
+  padding-block: 0.14em 0.2em;
+  padding-inline: 0.06em 0.22em;
+  overflow: visible;
+}
+
+.hero-wordmark {
+  font-family: var(--font-bangers), cursive;
+  line-height: 1.18;
+  overflow: visible;
+  letter-spacing: 0.04em;
+}
+
+.hero-auth0 {
+  font-size: clamp(3.15rem, 15vw, 8.25rem);
+  padding-inline-end: 0.28em;
+}
+
+.hero-welcome {
+  font-size: clamp(1.85rem, 8.5vw, 4.75rem);
+  display: inline-block;
+  padding-inline: 0.04em 0.16em;
+  padding-block: 0.06em 0.14em;
+}
+
+.drawing-preview {
+  --board: #f8f8f3;
+  --board-ink: #1e1e1e;
+}
+
+.drawing-preview-frame {
+  border-radius: 1.1rem;
+  overflow: hidden;
+  border: 1px solid rgba(255, 45, 120, 0.35);
+  box-shadow:
+    0 18px 50px rgba(0, 0, 0, 0.45),
+    0 0 32px rgba(255, 45, 120, 0.18),
+    0 0 48px rgba(0, 240, 255, 0.08);
+  background: var(--board);
+  transform: rotate(-1.25deg);
+}
+
+.drawing-preview-menubar {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.45rem 0.75rem;
+  background: #ececf4;
+  border-bottom: 1px solid rgba(30, 30, 30, 0.08);
+}
+
+.drawing-preview-dots {
+  display: flex;
+  gap: 0.28rem;
+}
+
+.drawing-preview-dots i {
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 999px;
+  display: block;
+  background: #d0d0dc;
+}
+
+.drawing-preview-dots i:first-child { background: #ff5f57; }
+.drawing-preview-dots i:nth-child(2) { background: #febc2e; }
+.drawing-preview-dots i:nth-child(3) { background: #28c840; }
+
+.drawing-preview-menu-label {
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #6b6b80;
+}
+
+.drawing-preview-live {
+  margin-left: auto;
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  color: var(--hot-pink);
+}
+
+.drawing-preview-body {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  background: var(--board);
+}
+
+.drawing-preview-tools {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 0.55rem 0.4rem;
+  background: #fff;
+  border-right: 1px solid rgba(30, 30, 30, 0.08);
+  color: #44445a;
+  font-size: 0.85rem;
+}
+
+.drawing-preview-tools span {
+  width: 1.7rem;
+  height: 1.7rem;
+  display: grid;
+  place-items: center;
+  border-radius: 0.4rem;
+}
+
+.drawing-preview-tools .is-active {
+  background: #e7e7ef;
+  box-shadow: inset 0 0 0 1px rgba(30, 30, 30, 0.12);
+}
+
+.drawing-preview-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 360 / 280;
+}
+
+.drawing-preview-alive {
+  transition: opacity 0.45s ease;
+}
+
+.drawing-preview-alive text {
+  filter: url(#alive-glow);
+}
+
+.drawing-preview figcaption {
+  margin-top: 0.85rem;
+  text-align: center;
+  font-size: 0.78rem;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+}
+
+@media (min-width: 1024px) {
+  .drawing-preview figcaption {
+    text-align: left;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .drawing-preview-frame {
+    transform: none;
+  }
 }
 
 /* Animated gradient border */
@@ -199,6 +350,14 @@ body {
   background: linear-gradient(135deg, var(--hot-pink), var(--electric-purple), var(--neon-cyan));
   z-index: -1;
   opacity: 0.6;
+}
+
+/* Keep touch drawing on the canvas; parent pans/zooms must not steal the stroke. */
+.party-excalidraw-host,
+.party-excalidraw-host .excalidraw,
+.party-excalidraw-host canvas {
+  touch-action: none;
+  overscroll-behavior: none;
 }
 
 /* Excalidraw compatibility — Tailwind v4 preflight sets svg{display:block} which

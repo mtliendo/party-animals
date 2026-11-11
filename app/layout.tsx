@@ -17,8 +17,9 @@ const bangers = Bangers({
 });
 
 export const metadata: Metadata = {
-  title: "Party Animals",
-  description: "Draw your party animal. AI brings it to life. The wall never forgets.",
+  title: "Auth0 welcomes AIE",
+  description:
+    "Auth0 welcomes AIE. Draw your party animal, AI brings it to life, and the wall never forgets.",
 };
 
 export default function RootLayout({

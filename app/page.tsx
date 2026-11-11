@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { getSessionFlags } from '@/lib/admin'
+import { DrawingPreview } from './DrawingPreview'
 
 export default async function Home() {
   const { isAdmin } = await getSessionFlags()
@@ -64,62 +65,64 @@ export default async function Home() {
       </nav>
 
       {/* Hero */}
-      <main className='flex-1 flex flex-col items-center justify-center text-center px-6 py-24 relative overflow-hidden'>
-        {/* Background grid/glow */}
+      <main className='flex-1 flex flex-col items-center justify-center px-6 py-16 sm:py-20 relative'>
+        {/* Background grid/glow — overflow clipped here, not on the title */}
         <div
-          className='absolute inset-0 pointer-events-none'
+          className='absolute inset-0 pointer-events-none overflow-hidden'
           style={{
             backgroundImage:
               'radial-gradient(ellipse at 50% 0%, rgba(176,38,255,0.15) 0%, transparent 60%), radial-gradient(ellipse at 80% 80%, rgba(255,45,120,0.12) 0%, transparent 50%), radial-gradient(ellipse at 20% 70%, rgba(0,240,255,0.08) 0%, transparent 50%)',
           }}
         />
 
-        <div className='relative z-10 max-w-4xl mx-auto'>
-          {/* Badge */}
-          <div
-            className='inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-xs font-semibold uppercase tracking-widest mb-8'
-            style={{
-              background: 'rgba(255,45,120,0.12)',
-              border: '1px solid rgba(255,45,120,0.3)',
-              color: 'var(--hot-pink)',
-            }}
-          >
-            <span className='w-1.5 h-1.5 rounded-full bg-current animate-pulse' />
-            AI World Fair 2026
+        <div className='relative z-10 w-full max-w-6xl mx-auto grid lg:grid-cols-[minmax(0,1.15fr)_minmax(16rem,0.9fr)] gap-10 lg:gap-14 items-center'>
+          <div className='text-center lg:text-left'>
+            <div
+              className='inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-xs font-semibold uppercase tracking-widest mb-8'
+              style={{
+                background: 'rgba(255,45,120,0.12)',
+                border: '1px solid rgba(255,45,120,0.3)',
+                color: 'var(--hot-pink)',
+              }}
+            >
+              <span className='w-1.5 h-1.5 rounded-full bg-current animate-pulse' />
+              AI Engineer · San Francisco
+            </div>
+
+            <h1 className='hero-wordmark mb-6'>
+              <span className='gradient-text glow-pink hero-auth0'>Auth0</span>
+              <br />
+              <span
+                className='hero-welcome glow-cyan'
+                style={{ color: 'var(--neon-cyan)' }}
+              >
+                welcomes AIE
+              </span>
+            </h1>
+
+            <p
+              className='text-lg sm:text-xl max-w-2xl mx-auto lg:mx-0 mb-10 leading-relaxed'
+              style={{ color: 'var(--text-muted)' }}
+            >
+              Draw your wildest creature. AI animates it into a video. Your animal
+              joins the wall — and gets posted to the{' '}
+              <span style={{ color: 'var(--hot-pink)' }}>GitHub gallery</span> by
+              an AI agent. <br />
+              <span style={{ color: 'var(--gold)' }}>Auth0 Token Vault</span>{' '}
+              helps finally say goodbye to long-lived credentials in your agents!
+            </p>
+
+            <div className='flex flex-col sm:flex-row gap-4 justify-center lg:justify-start'>
+              <Link href='/draw' className='btn-primary text-xl px-10 py-4'>
+                Draw Your Animal 🎨
+              </Link>
+              <Link href='/wall' className='btn-secondary text-xl px-10 py-4'>
+                See The Wall 🐾
+              </Link>
+            </div>
           </div>
 
-          {/* Headline */}
-          <h1
-            className='text-7xl sm:text-8xl md:text-9xl mb-6 leading-none tracking-wide'
-            style={{ fontFamily: 'var(--font-bangers)' }}
-          >
-            <span className='gradient-text glow-pink'>Auth0</span>
-            <br />
-            <span style={{ color: 'var(--neon-cyan)' }} className='glow-cyan'>
-              PARTY ANIMALS
-            </span>
-          </h1>
-
-          <p
-            className='text-lg sm:text-xl max-w-2xl mx-auto mb-12 leading-relaxed'
-            style={{ color: 'var(--text-muted)' }}
-          >
-            Draw your wildest creature. AI animates it into a video. Your animal
-            joins the wall — and gets posted to the{' '}
-            <span style={{ color: 'var(--hot-pink)' }}>GitHub gallery</span> by
-            an AI agent. <br />
-            <span style={{ color: 'var(--gold)' }}>Auth0 Token Vault</span>{' '}
-            helps finally say goodbye to long-lived credentials in your agents!
-          </p>
-
-          <div className='flex flex-col sm:flex-row gap-4 justify-center'>
-            <Link href='/draw' className='btn-primary text-xl px-10 py-4'>
-              Draw Your Animal 🎨
-            </Link>
-            <Link href='/wall' className='btn-secondary text-xl px-10 py-4'>
-              See The Wall 🐾
-            </Link>
-          </div>
+          <DrawingPreview />
         </div>
       </main>
 
