@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { getSessionFlags } from '@/lib/admin'
 import { DrawingPreview } from './DrawingPreview'
 import { SiteBrand } from '@/components/SiteBrand'
+import { HEART } from '@/lib/brand'
 
 export default async function Home() {
   const { isAdmin } = await getSessionFlags()
@@ -82,11 +83,13 @@ export default async function Home() {
             <h1 className='hero-wordmark mb-6'>
               <span className='gradient-text glow-pink hero-auth0'>Auth0</span>
               <br />
-              <span
-                className='hero-welcome glow-cyan'
-                style={{ color: 'var(--neon-cyan)' }}
-              >
-                welcomes AIE
+              <span className='hero-welcome'>
+                <span className='brand-heart hero-heart'>
+                  {HEART}
+                </span>
+                <span className='glow-cyan' style={{ color: 'var(--neon-cyan)' }}>
+                  AIE
+                </span>
               </span>
             </h1>
 
