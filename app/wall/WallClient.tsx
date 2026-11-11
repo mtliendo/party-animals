@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
 import { DrawYoursCard } from "@/components/DrawYoursCard";
+import { WallQrCard } from "@/components/WallQrCard";
 import type { Animal } from "@/lib/db";
 
 const VIDEO_FALLBACK_AFTER_MS = 3 * 60 * 1000;
@@ -138,22 +139,24 @@ export default function WallClient({
       </nav>
 
       <main className="flex-1 px-6 py-12 max-w-7xl mx-auto w-full">
-        {/* Header */}
-        <div className="text-center mb-12">
-          <h1
-            className="text-6xl sm:text-7xl mb-4 tracking-wide"
-            style={{ fontFamily: "var(--font-bangers)" }}
-          >
-            <span className="gradient-text glow-pink">THE WALL</span>
-          </h1>
-          <p className="text-lg mb-4" style={{ color: "var(--text-muted)" }}>
-            Every animal, immortalized forever.
-          </p>
-          <Link href="/draw" className="btn-primary inline-block text-sm px-6 py-2.5">
-            Draw Your Animal
-          </Link>
-          <Separator className="mt-8 opacity-20" />
+        <div className="wall-hero">
+          <div className="wall-hero-copy">
+            <h1
+              className="text-6xl sm:text-7xl mb-4 tracking-wide"
+              style={{ fontFamily: "var(--font-bangers)" }}
+            >
+              <span className="gradient-text glow-pink">THE WALL</span>
+            </h1>
+            <p className="text-lg mb-5" style={{ color: "var(--text-muted)" }}>
+              Every animal, immortalized forever.
+            </p>
+            <Link href="/draw" className="btn-primary inline-block text-sm px-6 py-2.5">
+              Draw Your Animal
+            </Link>
+          </div>
+          <WallQrCard qrSvg={qrSvg} />
         </div>
+        <Separator className="mb-8 opacity-20" />
 
         {/* Count badge */}
         <div className="flex items-center justify-between mb-8">
@@ -171,7 +174,7 @@ export default function WallClient({
 
         {/* Grid — invite tile first, not counted in the badge */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          <DrawYoursCard qrSvg={qrSvg} />
+          <DrawYoursCard />
           {animals.map((animal) => (
             <AnimalCard key={animal.id} animal={animal} onClick={() => setSelected(animal)} />
           ))}

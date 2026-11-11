@@ -375,7 +375,75 @@ body {
   border-width: revert;
 }
 
-/* Wall invite tile — same card size as drawings, pink/purple accent, scannable QR. */
+/* Wall hero — title + projector QR. Hidden on phones; two-column from 1024px. */
+.wall-hero {
+  display: grid;
+  align-items: center;
+  justify-items: center;
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+  text-align: center;
+}
+.wall-hero-copy {
+  min-width: 0;
+}
+.wall-qr-card {
+  display: none;
+}
+
+@media (min-width: 1024px) {
+  .wall-hero {
+    grid-template-columns: minmax(0, 1fr) auto;
+    justify-items: stretch;
+    gap: 2.5rem 3.5rem;
+    text-align: left;
+    overflow: visible;
+  }
+  .wall-qr-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.9rem;
+    width: clamp(18rem, 22vw, 24rem);
+    text-decoration: none;
+    flex-shrink: 0;
+  }
+  .wall-qr-face {
+    width: 100%;
+    padding: 1.15rem;
+    border-radius: 1.35rem;
+    background: #ffffff;
+    border: 1px solid rgba(255, 45, 120, 0.4);
+    box-shadow:
+      0 0 28px rgba(255, 45, 120, 0.28),
+      0 0 56px rgba(176, 38, 255, 0.16);
+  }
+  .wall-qr-code {
+    width: 100%;
+    aspect-ratio: 1;
+    background: #ffffff;
+    border-radius: 0.4rem;
+    overflow: hidden;
+  }
+  .wall-qr-code svg {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+  .wall-qr-caption {
+    margin: 0;
+    max-width: 100%;
+    font-family: var(--font-bangers), cursive;
+    font-size: clamp(1.15rem, 1.5vw, 1.45rem);
+    letter-spacing: 0.06em;
+    line-height: 1.15;
+    text-align: center;
+    color: var(--hot-pink);
+    text-shadow: 0 0 16px rgba(255, 45, 120, 0.45);
+  }
+}
+
+/* Wall invite tile — full looping canvas, same card size as drawings. */
 .draw-yours-card {
   text-decoration: none;
   border: 1px solid rgba(255, 45, 120, 0.42);
@@ -389,30 +457,6 @@ body {
     0 0 28px rgba(255, 45, 120, 0.32),
     0 0 48px rgba(176, 38, 255, 0.16);
 }
-.draw-yours-sketch {
-  flex: 1 1 48%;
-  min-height: 0;
-  background: #f8f8f3;
-}
-.draw-yours-qr {
-  flex: 1 1 52%;
-  min-height: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0.7rem 0.85rem;
-  background: #ffffff;
-}
-.draw-yours-qr-code {
-  width: min(100%, 13.5rem);
-  aspect-ratio: 1;
-  background: #ffffff;
-}
-.draw-yours-qr-code svg {
-  display: block;
-  width: 100%;
-  height: 100%;
-}
 .draw-yours-caption {
   margin: 0;
   font-family: var(--font-bangers), cursive;
@@ -424,12 +468,18 @@ body {
 }
 
 .drawing-preview--tile {
+  display: flex;
+  flex-direction: column;
   width: 100%;
   height: 100%;
   max-width: none;
   margin: 0;
 }
 .drawing-preview--tile .drawing-preview-frame {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
   height: 100%;
   border-radius: 0;
   border: 0;
@@ -449,8 +499,9 @@ body {
   height: 1.25rem;
 }
 .drawing-preview--tile .drawing-preview-body {
+  flex: 1;
   min-height: 0;
-  height: calc(100% - 1.7rem);
+  height: auto;
 }
 .drawing-preview--tile .drawing-preview-svg {
   height: 100%;
