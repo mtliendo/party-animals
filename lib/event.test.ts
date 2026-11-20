@@ -1,7 +1,21 @@
 import { describe, expect, it } from 'vitest'
-import { getEventConfig } from './event'
+import { getEventConfig, loginUrl, publicEventConfig, validateEventOverrides } from './event'
 
 describe('event configuration', () => {
+  it('keeps the production GitHub login default separate from preview login', () => {
+    const production = getEventConfig({})
+    expect(production.loginConnection).toBe('github')
+    expect(loginUrl(production.loginConnection)).toBe('/auth/login?connection=github&returnTo=%2Fsettings')
+    const preview = getEventConfig({ AUTH0_LOGIN_CONNECTION: 'Username-Password-Authentication' })
+    expect(preview.connection).toBe('github')
+    expect(publicEventConfig(preview).loginConnection).toBe('Username-Password-Authentication')
+    expect(loginUrl(preview.loginConnection)).toBe('/auth/login?connection=Username-Password-Authentication&returnTo=%2Fsettings')
+  })
+  it('supports Universal Login without a forced connection and custom legacy connections', () => {
+    expect(loginUrl(getEventConfig({ AUTH0_LOGIN_CONNECTION: '' }).loginConnection)).toBe('/auth/login?returnTo=%2Fsettings')
+    expect(getEventConfig({ AUTH0_TOKEN_VAULT_CONNECTION: 'custom-github' }).loginConnection).toBe('custom-github')
+    expect(loginUrl('name&other=value', '/settings?tab=app')).toBe('/auth/login?connection=name%26other%3Dvalue&returnTo=%2Fsettings%3Ftab%3Dapp')
+  })
   it('preserves the existing event defaults', () => {
     expect(getEventConfig({})).toMatchObject({
       slug: 'ai-world-fair-2026', name: 'AI World Fair 2026',
@@ -36,7 +50,28 @@ describe('event configuration', () => {
     expect(getEventConfig({ ADMIN_GITHUB_LOGIN: '', ADMIN_EMAIL_DOMAIN: '', ADMIN_NAMES: '', ADMIN_NAME_CONTAINS: '' }))
       .toMatchObject({ adminLogins: '', adminEmailDomain: '', adminNames: '', adminNameContains: '' })
   })
-  it.each(['', '../event', 'Event', 'two--events'])('rejects unsafe slug %j', (slug) => {
+  it.each(['../event', 'Event', 'two--events'])('rejects unsafe slug %j', (slug) => {
     expect(() => getEventConfig({ EVENT_SLUG: slug })).toThrow('EVENT_SLUG')
+  })
+  it('merges overrides before environment and recomputes derived values', () => {
+    expect(getEventConfig({ EVENT_BRAND_HOST: 'Env', EVENT_SITE_URL: 'https://env.example', EVENT_NAME: 'Env name' }, { host: 'Saved', shortName: 'S', siteUrl: 'https://saved.example/', name: '' }))
+      .toMatchObject({ siteName: 'Saved ❤️ S', description: 'Saved ❤️ S. Draw your animal, AI brings it to life, and the wall never forgets.', drawUrl: 'https://saved.example/draw', wallUrl: 'https://saved.example/wall', name: 'Env name' })
+    expect(getEventConfig({ EVENT_SLUG: '' }).slug).toBe('ai-world-fair-2026')
+  })
+  it('trims input and omits empty overrides', () => {
+    expect(validateEventOverrides({ name: ' New name ', slug: ' ', url: 'https://example.com' })).toEqual({ overrides: { name: 'New name', url: 'https://example.com' }, errors: {} })
+    expect(validateEventOverrides({})).toEqual({ overrides: {}, errors: {} })
+  })
+  it.each(['https://example.com/?a=1', 'https://example.com/#section', 'https://example.com/?', 'https://example.com/#'])('rejects site URL queries and fragments %s', siteUrl => {
+    expect(validateEventOverrides({ siteUrl }).errors).toHaveProperty('siteUrl')
+  })
+  it('strips a site URL trailing slash and derives clean links', () => {
+    const result = validateEventOverrides({ siteUrl: ' https://example.com/base/ ' })
+    expect(result).toEqual({ overrides: { siteUrl: 'https://example.com/base' }, errors: {} })
+    expect(getEventConfig({}, result.overrides)).toMatchObject({ drawUrl: 'https://example.com/base/draw', wallUrl: 'https://example.com/base/wall' })
+    expect(validateEventOverrides({ url: 'https://example.com/?a=1#section' }).errors).toEqual({})
+  })
+  it.each([null, [], 'text', { slug: 'Two--events' }, { url: 'javascript:alert(1)' }, { siteUrl: '/relative' }, { name: 'a'.repeat(121) }, { host: 123 }, { issueRepo: 'owner/repo' }])('rejects invalid overrides %j', input => {
+    expect(Object.keys(validateEventOverrides(input).errors).length).toBeGreaterThan(0)
   })
 })

@@ -1,5 +1,6 @@
 import { neon } from '@neondatabase/serverless'
-import { event } from './event'
+import { getEvent } from './event-settings'
+import type { EventOverrides } from './event'
 
 function database() {
   if (!process.env.DATABASE_URL) throw new Error('DATABASE_URL is not set')
@@ -25,6 +26,7 @@ export function ensureSchema(): Promise<void> {
       `,
       sql`ALTER TABLE animals ADD COLUMN IF NOT EXISTS event_slug text NOT NULL DEFAULT 'ai-world-fair-2026'`,
       sql`CREATE INDEX IF NOT EXISTS animals_event_created_at_idx ON animals (event_slug, created_at)`,
+      sql`CREATE TABLE IF NOT EXISTS app_settings (id int PRIMARY KEY DEFAULT 1 CHECK (id = 1), event jsonb NOT NULL DEFAULT '{}', updated_at timestamptz NOT NULL DEFAULT now())`,
     ])
   })().catch((error) => {
     schema = undefined
@@ -38,6 +40,23 @@ async function scopedDatabase() {
   return database()
 }
 
+export async function readEventOverrides(): Promise<EventOverrides> {
+  const sql = await scopedDatabase()
+  const rows = await sql`SELECT event FROM app_settings WHERE id = 1`
+  return (rows[0]?.event as EventOverrides) ?? {}
+}
+
+export async function writeEventOverrides(overrides: EventOverrides): Promise<void> {
+  const sql = await scopedDatabase()
+  await sql`INSERT INTO app_settings (id, event) VALUES (1, ${JSON.stringify(overrides)}::jsonb)
+    ON CONFLICT (id) DO UPDATE SET event = EXCLUDED.event, updated_at = now()`
+}
+
+export async function clearEventOverrides(): Promise<void> {
+  const sql = await scopedDatabase()
+  await sql`DELETE FROM app_settings WHERE id = 1`
+}
+
 export type Animal = {
   id: string
   github_handle: string
@@ -49,6 +68,7 @@ export type Animal = {
 }
 
 export async function getAllAnimals(): Promise<Animal[]> {
+  const event = await getEvent()
   const sql = await scopedDatabase()
   const rows = await sql`
     SELECT id, x_handle AS github_handle, image_url, video_url, status,
@@ -62,6 +82,7 @@ export async function createAnimal(data: {
   github_handle: string
   image_url?: string
 }): Promise<Animal> {
+  const event = await getEvent()
   const sql = await scopedDatabase()
   const rows = await sql`
     INSERT INTO animals (x_handle, image_url, event_slug)
@@ -84,7 +105,7 @@ export async function updateAnimal(
       status     = COALESCE(${data.status ?? null}, status),
       tweet_id   = COALESCE(${data.issue_url ?? null}, tweet_id),
       image_url  = COALESCE(${data.image_url ?? null}, image_url)
-    WHERE id = ${id} AND event_slug = ${event.slug}
+    WHERE id = ${id}
     RETURNING id, x_handle AS github_handle, image_url, video_url, status,
               tweet_id AS issue_url, created_at
   `
@@ -92,6 +113,7 @@ export async function updateAnimal(
 }
 
 export async function getAnimalById(id: string): Promise<Animal | null> {
+  const event = await getEvent()
   const sql = await scopedDatabase()
   const rows = await sql`
     SELECT id, x_handle AS github_handle, image_url, video_url, status,
@@ -102,11 +124,13 @@ export async function getAnimalById(id: string): Promise<Animal | null> {
 }
 
 export async function deleteAnimal(id: string): Promise<void> {
+  const event = await getEvent({ strict: true })
   const sql = await scopedDatabase()
   await sql`DELETE FROM animals WHERE id = ${id} AND event_slug = ${event.slug}`
 }
 
 export async function resetEvent(): Promise<number> {
+  const event = await getEvent({ strict: true })
   const sql = await scopedDatabase()
   const rows = await sql`DELETE FROM animals WHERE event_slug = ${event.slug} RETURNING id`
   return rows.length

@@ -1,9 +1,8 @@
-import { event } from './event'
+import { getEvent } from './event-settings'
 import { put } from '@vercel/blob'
 import { getAnimalById, updateAnimal } from '@/lib/db'
 
 const XAI_BASE = 'https://api.x.ai/v1'
-const VIDEO_PROMPT = event.videoPrompt
 
 const inflight = new Set<string>()
 
@@ -18,6 +17,7 @@ export async function generateAndSaveVideo(opts: {
   imageUrl: string
   imageBytes?: ArrayBuffer | Uint8Array
 }): Promise<GenerateResult> {
+  const event = await getEvent()
   if (inflight.has(opts.animalId)) {
     console.log('[generateAndSaveVideo] already running', opts.animalId)
     return { status: 'already-running' }
@@ -35,7 +35,7 @@ export async function generateAndSaveVideo(opts: {
     if (!apiKey) throw new Error('XAI_API_KEY is not set')
 
     const dataUrl = await toDataUrl(opts.imageUrl, opts.imageBytes)
-    const requestId = await startVideoGeneration(apiKey, dataUrl)
+    const requestId = await startVideoGeneration(apiKey, dataUrl, event.videoPrompt)
     const remoteVideoUrl = await pollForVideo(apiKey, requestId)
 
     const videoRes = await fetchWithRetry(remoteVideoUrl)
@@ -83,6 +83,7 @@ async function toDataUrl(
 async function startVideoGeneration(
   apiKey: string,
   dataUrl: string,
+  prompt: string,
 ): Promise<string> {
   const models = unique([
     process.env.XAI_VIDEO_MODEL,
@@ -101,7 +102,7 @@ async function startVideoGeneration(
       },
       body: JSON.stringify({
         model,
-        prompt: VIDEO_PROMPT,
+        prompt,
         duration: 5,
         resolution: '480p',
         image: { url: dataUrl },

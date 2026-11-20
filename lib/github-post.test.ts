@@ -5,10 +5,10 @@ const { getByUsername, create } = vi.hoisted(() => ({
 vi.mock('octokit', () => ({ Octokit: class {
   rest = { users: { getByUsername }, issues: { create } }
 } }))
-vi.mock('./event', () => ({ event: {
+vi.mock('./event-settings', () => ({ getEvent: async () => ({
   issueRepo: 'host/gallery', issueLabel: 'summer', wallUrl: 'https://summer.example/wall',
   name: 'Summer 2027', url: 'https://summer.example',
-} }))
+}) }))
 import { createAnimalIssue } from './github-post'
 
 beforeEach(() => {

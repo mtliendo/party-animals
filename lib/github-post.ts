@@ -1,12 +1,9 @@
 import { Octokit } from 'octokit'
 
-import { event } from './event'
-const ISSUE_REPO = event.issueRepo
-const EVENT_LABEL = event.issueLabel
-const WALL_URL = event.wallUrl
+import { getEvent } from './event-settings'
 
-function repoParts() {
-  const [owner, repo] = ISSUE_REPO.split('/')
+function repoParts(issueRepo: string) {
+  const [owner, repo] = issueRepo.split('/')
   if (!owner || !repo) {
     throw new Error('GITHUB_ISSUE_REPO must be set to "owner/name"')
   }
@@ -36,7 +33,8 @@ export type IssueInput = {
 export async function createAnimalIssue(
   input: IssueInput,
 ): Promise<{ number: number; url: string }> {
-  const { owner, repo } = repoParts()
+  const event = await getEvent()
+  const { owner, repo } = repoParts(event.issueRepo)
   const octokit = new Octokit({ auth: input.token })
 
   let mention = input.githubHandle
@@ -60,7 +58,7 @@ export async function createAnimalIssue(
       ? `🎬 [Watch the animation](${input.videoUrl})`
       : '_Still of the original drawing — animation was not ready yet._',
     '',
-    `Check out all the animals on [The Wall](${WALL_URL})`,
+    `Check out all the animals on [The Wall](${event.wallUrl})`,
     '',
     '---',
     `_Created at [${event.name}](${event.url}) · Powered by [Auth0](https://auth0.com) Token Vault_`,
@@ -71,7 +69,7 @@ export async function createAnimalIssue(
     repo,
     title: `🐾 ${validatedMention}'s Party Animal`,
     body: lines.join('\n'),
-    labels: [EVENT_LABEL],
+    labels: [event.issueLabel],
   })
 
   return { number: issue.data.number, url: issue.data.html_url }

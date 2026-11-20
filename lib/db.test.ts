@@ -1,12 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-const { query, transaction, neon } = vi.hoisted(() => {
+const { query, transaction, neon, getEvent } = vi.hoisted(() => {
   const query = vi.fn()
   const transaction = vi.fn()
-  return { query, transaction, neon: vi.fn(() => Object.assign(query, { transaction })) }
+  return { query, transaction, neon: vi.fn(() => Object.assign(query, { transaction })), getEvent: vi.fn() }
 })
 vi.mock('@neondatabase/serverless', () => ({ neon }))
-vi.mock('./event', () => ({ event: { slug: 'test-event' } }))
+vi.mock('./event-settings', () => ({ getEvent }))
 
 beforeEach(() => {
   vi.resetModules()
@@ -14,6 +14,7 @@ beforeEach(() => {
   vi.stubEnv('DATABASE_URL', 'postgresql://unused:unused@localhost/unused')
   query.mockResolvedValue([])
   transaction.mockResolvedValue([])
+  getEvent.mockResolvedValue({ slug: 'test-event' })
 })
 
 function statements() {
@@ -21,18 +22,26 @@ function statements() {
 }
 
 describe('event-scoped database', () => {
+  it.each(['deleteAnimal', 'resetEvent'] as const)('fails closed before %s when settings cannot be read', async operation => {
+    const db = await import('./db')
+    getEvent.mockRejectedValueOnce(new Error('offline'))
+    await expect(db[operation]('one')).rejects.toThrow('offline')
+    expect(getEvent).toHaveBeenCalledWith({ strict: true })
+    expect(query).not.toHaveBeenCalled()
+  })
   it('shares an idempotent schema promise before the first queries', async () => {
     const db = await import('./db')
     await Promise.all([db.getAllAnimals(), db.getAllAnimals()])
     expect(transaction).toHaveBeenCalledTimes(1)
-    expect(transaction.mock.calls[0][0]).toHaveLength(4)
+    expect(transaction.mock.calls[0][0]).toHaveLength(5)
     expect(statements()[0].text).toBe('SELECT pg_advisory_xact_lock(734291806)')
-    expect(statements().filter((s) => s.text.includes('CREATE TABLE IF NOT EXISTS'))).toHaveLength(1)
+    expect(statements().filter((s) => s.text.includes('CREATE TABLE IF NOT EXISTS'))).toHaveLength(2)
     expect(statements()[2].text).toContain("ADD COLUMN IF NOT EXISTS event_slug text NOT NULL DEFAULT 'ai-world-fair-2026'")
     expect(statements()[3].text).toContain('(event_slug, created_at)')
-    expect(statements().slice(4).every((s) => s.values.includes('test-event'))).toBe(true)
+    expect(statements()[4].text).toContain('CREATE TABLE IF NOT EXISTS app_settings')
+    expect(statements().slice(5).every((s) => s.values.includes('test-event'))).toBe(true)
   })
-  it('scopes inserts, reads, updates, deletes and resets', async () => {
+  it('scopes inserts, reads, deletes and resets but updates the original animal by id', async () => {
     const db = await import('./db')
     await db.ensureSchema()
     query.mockClear()
@@ -45,9 +54,22 @@ describe('event-scoped database', () => {
     expect(await db.resetEvent()).toBe(1)
     const calls = statements()
     expect(calls).toHaveLength(6)
-    expect(calls.every((s) => s.values.includes('test-event'))).toBe(true)
+    expect(calls.filter((_, index) => index !== 3).every((s) => s.values.includes('test-event'))).toBe(true)
     expect(calls[0].text).toContain('(x_handle, image_url, event_slug)')
-    expect(calls.slice(1).every((s) => s.text.includes('event_slug = ?'))).toBe(true)
+    expect(calls.slice(1).filter((_, index) => index !== 2).every((s) => s.text.includes('event_slug = ?'))).toBe(true)
+    expect(calls[3].text).toContain('WHERE id = ?')
+    expect(calls[3].text).not.toContain('event_slug')
+  })
+  it('persists in-flight results without consulting a changed event slug', async () => {
+    const db = await import('./db')
+    await db.ensureSchema()
+    query.mockClear()
+    getEvent.mockResolvedValue({ slug: 'new-event' })
+    query.mockResolvedValueOnce([{ id: 'original', video_url: 'https://video.example', status: 'approved' }])
+    expect(await db.updateAnimal('original', { video_url: 'https://video.example', status: 'approved' })).toMatchObject({ id: 'original', video_url: 'https://video.example' })
+    expect(getEvent).not.toHaveBeenCalled()
+    expect(statements()[0].values).toContain('original')
+    expect(statements()[0].text).not.toContain('event_slug')
   })
   it('handles empty results without leaking another event', async () => {
     const db = await import('./db')
@@ -59,7 +81,7 @@ describe('event-scoped database', () => {
     const db = await import('./db')
     transaction.mockRejectedValueOnce(new Error('offline'))
     await expect(db.getAllAnimals()).rejects.toThrow('offline')
-    expect(query).toHaveBeenCalledTimes(4)
+    expect(query).toHaveBeenCalledTimes(5)
     await expect(db.getAllAnimals()).resolves.toEqual([])
     expect(transaction).toHaveBeenCalledTimes(2)
   })

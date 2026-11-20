@@ -1,6 +1,10 @@
 'use client'
 
 import Link from 'next/link'
+import { useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { toast, Toaster } from 'sonner'
+import { eventFields, loginUrl, type getEventConfig } from '@/lib/event'
 import { useEvent } from '@/components/EventProvider'
 import { SiteBrand } from '@/components/SiteBrand'
 import {
@@ -24,17 +28,46 @@ export default function SettingsClient({
   user,
   githubConnected,
   githubSource,
+  settings,
 }: {
   user: User
   githubConnected: boolean
   githubSource: 'token-vault' | 'github-login' | 'env' | null
+  settings: { effective: ReturnType<typeof getEventConfig>; defaults: ReturnType<typeof getEventConfig> }
 }) {
   const { connection } = useEvent()
+  const router = useRouter()
+  const [values, setValues] = useState(() => Object.fromEntries(eventFields.map(key => [key, settings.effective[key]])))
+  const [errors, setErrors] = useState<Record<string, string>>({})
+  const [busy, setBusy] = useState(false)
+  async function save(reset = false) {
+    setBusy(true)
+    setErrors({})
+    try {
+      const overrides = Object.fromEntries(eventFields.map(key => [key, values[key].trim() === settings.defaults[key] ? '' : values[key]]))
+      const res = await fetch('/api/settings/event', {
+        method: reset ? 'DELETE' : 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        ...(reset ? {} : { body: JSON.stringify(overrides) }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setErrors(data.errors ?? {})
+        throw new Error(data.error ?? 'Unable to save settings')
+      }
+      setValues(Object.fromEntries(eventFields.map(key => [key, data.effective[key]])))
+      toast.success(reset ? 'Reset to environment defaults' : 'App configuration saved')
+      router.refresh()
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Unable to save settings')
+    } finally { setBusy(false) }
+  }
   return (
     <div
       className='min-h-screen flex flex-col'
       style={{ background: 'var(--bg-dark)' }}
     >
+      <Toaster richColors />
       {/* Nav */}
       <nav className='app-nav'>
         <SiteBrand />
@@ -193,7 +226,7 @@ export default function SettingsClient({
                   </div>
                 ) : null}
                 <a
-                  href={`/auth/login?connection=${encodeURIComponent(connection)}&returnTo=/settings`}
+                  href={loginUrl(connection)}
                   className='btn-primary w-full justify-center text-center'
                 >
                   {githubConnected ? 'Re-sign in with GitHub' : 'Sign in with GitHub'}
@@ -205,6 +238,28 @@ export default function SettingsClient({
                   Connect GitHub (Token Vault)
                 </a>
               </div>
+            </CardContent>
+          </Card>
+
+          <Card style={{ background: 'var(--bg-card)', borderColor: 'var(--border)' }}>
+            <CardHeader>
+              <CardTitle className='text-lg tracking-wide' style={{ fontFamily: 'var(--font-bangers)', color: 'var(--text-primary)' }}>CONFIGURE APP</CardTitle>
+              <CardDescription style={{ color: 'var(--text-muted)' }}>Changes apply on the next request. Leave a field empty to use its environment default.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form className='flex flex-col gap-4' onSubmit={e => { e.preventDefault(); void save() }}>
+                {eventFields.map(key => (
+                  <div key={key} className='flex flex-col gap-1'>
+                    <label htmlFor={`event-${key}`} className='text-sm font-semibold'>{{ slug: 'Event slug', name: 'Event name', url: 'Event URL', host: 'Brand host', shortName: 'Brand short name', tagline: 'Tagline', siteUrl: 'Site URL', issueLabel: 'Issue label' }[key]}</label>
+                    <input id={`event-${key}`} value={values[key]} placeholder={settings.defaults[key]} disabled={busy} type={key === 'url' || key === 'siteUrl' ? 'url' : 'text'} maxLength={key === 'url' || key === 'siteUrl' ? 2048 : 120} onChange={e => setValues({ ...values, [key]: e.target.value })} aria-invalid={Boolean(errors[key])} aria-describedby={`event-${key}-hint`} className='rounded-md border px-3 py-2 w-full' style={{ background: 'var(--bg-dark)', borderColor: 'var(--border)' }} />
+                    <p id={`event-${key}-hint`} className='text-xs break-all' style={{ color: 'var(--text-muted)' }}>Env default: {settings.defaults[key]}</p>
+                    {key === 'slug' && <p className='text-xs' style={{ color: 'var(--gold)' }}>Changing the slug starts a fresh wall. Previous animals remain under their original slug.</p>}
+                    {errors[key] && <p role='alert' className='text-sm text-red-400'>{errors[key]}</p>}
+                  </div>
+                ))}
+                <button type='submit' disabled={busy} className='btn-primary justify-center disabled:opacity-50'>{busy ? 'Saving…' : 'Save'}</button>
+                <button type='button' disabled={busy} className='btn-secondary justify-center disabled:opacity-50' onClick={() => void save(true)}>Reset to env defaults</button>
+              </form>
             </CardContent>
           </Card>
 

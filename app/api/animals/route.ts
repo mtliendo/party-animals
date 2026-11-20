@@ -1,4 +1,4 @@
-import { event } from '@/lib/event'
+import { getEvent } from '@/lib/event-settings'
 import { after, NextRequest, NextResponse } from 'next/server'
 import { put } from '@vercel/blob'
 import { createAnimal, getAllAnimals } from '@/lib/db'
@@ -43,6 +43,7 @@ export async function POST(request: NextRequest) {
 
     const imageId = uuidv4()
     const imageBuffer = await imageFile.arrayBuffer()
+    const event = await getEvent()
     const imageBlob = await put(`events/${event.slug}/animals/${imageId}/drawing.png`, imageBuffer, {
       access: 'public',
       token: process.env.PARTY_ANIMAL_BLOB_READ_WRITE_TOKEN,
