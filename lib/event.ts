@@ -1,7 +1,45 @@
 import { HEART } from './event-heart'
 export { HEART } from './event-heart'
 
-export function getEventConfig(env: Record<string, string | undefined> = process.env) {
+export const eventFields = ['slug', 'name', 'url', 'host', 'shortName', 'tagline', 'siteUrl', 'issueLabel'] as const
+export type EventOverrides = Partial<Record<typeof eventFields[number], string>>
+
+export function validateEventOverrides(input: unknown) {
+  const overrides: EventOverrides = {}
+  const errors: Record<string, string> = {}
+  if (!input || typeof input !== 'object' || Array.isArray(input)) {
+    return { overrides, errors: { body: 'Expected an object' } }
+  }
+  for (const [key, value] of Object.entries(input)) {
+    if (!eventFields.includes(key as typeof eventFields[number])) {
+      errors[key] = 'Unknown field'
+      continue
+    }
+    if (typeof value !== 'string') { errors[key] = 'Expected text'; continue }
+    const text = value.trim()
+    if (!text) continue
+    if (text.length > (key === 'url' || key === 'siteUrl' ? 2048 : 120)) {
+      errors[key] = 'Value is too long'
+      continue
+    }
+    if (key === 'slug' && !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(text)) errors[key] = 'Use lowercase letters, numbers and single hyphens'
+    if (key === 'url' || key === 'siteUrl') {
+      try {
+        if (!['http:', 'https:'].includes(new URL(text).protocol)) throw new Error()
+      } catch { errors[key] = 'Enter an http(s) URL' }
+    }
+    overrides[key as typeof eventFields[number]] = text
+  }
+  return { overrides, errors }
+}
+
+export function getEventConfig(env: Record<string, string | undefined> = process.env, overrides: EventOverrides = {}) {
+  env = { ...env }
+  const keys = { slug: 'EVENT_SLUG', name: 'EVENT_NAME', url: 'EVENT_URL', host: 'EVENT_BRAND_HOST', shortName: 'EVENT_BRAND_SHORT_NAME', tagline: 'EVENT_TAGLINE', siteUrl: 'EVENT_SITE_URL', issueLabel: 'EVENT_ISSUE_LABEL' }
+  for (const key of eventFields) {
+    const value = overrides[key]?.trim() || env[keys[key]]?.trim()
+    env[keys[key]] = value || undefined
+  }
   const host = env.EVENT_BRAND_HOST ?? 'Auth0'
   const shortName = env.EVENT_BRAND_SHORT_NAME ?? 'AIE'
   const siteName = `${host} ${HEART} ${shortName}`
@@ -31,9 +69,7 @@ export function getEventConfig(env: Record<string, string | undefined> = process
   }
 }
 
-export const event = getEventConfig()
-
-export function publicEventConfig() {
+export function publicEventConfig(event: ReturnType<typeof getEventConfig>) {
   const { host, shortName, siteName, drawUrl, connection } = event
   return { host, shortName, siteName, drawUrl, connection }
 }

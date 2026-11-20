@@ -1,4 +1,4 @@
-import { event } from '@/lib/event'
+import { getEvent } from '@/lib/event-settings'
 import { auth0 } from '@/lib/auth0'
 import { GITHUB_TOKEN_CLAIM_KEYS, githubIdentityToken } from '@/lib/github-claims'
 import {
@@ -97,6 +97,7 @@ async function getGithubIdentityAccessToken(
 export async function getAdminGitHubToken(
   request?: SessionRequest,
 ): Promise<GitHubTokenResult> {
+  const event = await getEvent()
   const session = await readAuth0Session(request)
   if (!session?.user) {
     logUnauthorized('getAdminGitHubToken', 'no session', session)

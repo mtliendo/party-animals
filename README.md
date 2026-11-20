@@ -15,7 +15,9 @@ Draw an animal, bring it to life with AI, and curate a public wall. Approved ani
 
 ### Fresh wall / reset
 
-Prefer changing `EVENT_SLUG` and redeploying: all queries (including by-ID mutations) are scoped to that slug, and earlier events remain intact. Legacy rows are always migrated to `ai-world-fair-2026`, not whichever new slug runs the migration first.
+Admins can use **Settings → CONFIGURE APP** to change the event slug, name, URL, brand host/short name, tagline, site URL and issue label without redeploying. Only overrides are saved in Neon's singleton `app_settings` row; empty fields fall back to environment variables and then built-in defaults. **Reset to env defaults** clears saved overrides. Reads fall back to the environment if Neon is unavailable. All other settings below remain environment-only.
+
+Changing the slug starts a fresh wall: all queries (including by-ID mutations) are scoped to that slug, and earlier events remain intact. Legacy rows are always migrated to `ai-world-fair-2026`, not whichever new slug runs the migration first. The reset script uses the effective saved slug too.
 
 To permanently delete **only the current event's rows**, run `pnpm event:reset --yes`. Without `--yes` it refuses before connecting. Verify `DATABASE_URL` and `EVENT_SLUG` first. This does **not** delete blobs or GitHub issues. New uploads use `events/<slug>/animals/`; manage Blob retention separately. Switching back to an earlier slug restores its wall unless its rows were deleted.
 

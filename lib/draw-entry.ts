@@ -1,2 +1,4 @@
-import { event } from './event'
-export const DRAW_ENTRY_URL = event.drawUrl
+import { getEvent } from './event-settings'
+export async function getDrawEntryUrl() {
+  return (await getEvent()).drawUrl
+}

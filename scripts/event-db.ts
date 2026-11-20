@@ -8,7 +8,8 @@ async function main() {
     throw new Error('Refusing to delete event data. Re-run pnpm event:reset --yes to confirm.')
   }
   const { ensureSchema, resetEvent } = await import('../lib/db')
-  const { event } = await import('../lib/event')
+  const { getEvent } = await import('../lib/event-settings')
+  const event = await getEvent()
   if (command === 'setup') {
     await ensureSchema()
     console.log('Event database schema ready.')

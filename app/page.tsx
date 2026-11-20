@@ -2,9 +2,11 @@ import Link from 'next/link'
 import { getSessionFlags } from '@/lib/admin'
 import { DrawingPreview } from './DrawingPreview'
 import { SiteBrand } from '@/components/SiteBrand'
-import { HEART, event } from '@/lib/event'
+import { HEART } from '@/lib/event'
+import { getEvent } from '@/lib/event-settings'
 
 export default async function Home() {
+  const event = await getEvent()
   const { isAdmin } = await getSessionFlags()
 
   return (

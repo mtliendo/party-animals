@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { getEventConfig } from './event'
+import { getEventConfig, validateEventOverrides } from './event'
 
 describe('event configuration', () => {
   it('preserves the existing event defaults', () => {
@@ -36,7 +36,19 @@ describe('event configuration', () => {
     expect(getEventConfig({ ADMIN_GITHUB_LOGIN: '', ADMIN_EMAIL_DOMAIN: '', ADMIN_NAMES: '', ADMIN_NAME_CONTAINS: '' }))
       .toMatchObject({ adminLogins: '', adminEmailDomain: '', adminNames: '', adminNameContains: '' })
   })
-  it.each(['', '../event', 'Event', 'two--events'])('rejects unsafe slug %j', (slug) => {
+  it.each(['../event', 'Event', 'two--events'])('rejects unsafe slug %j', (slug) => {
     expect(() => getEventConfig({ EVENT_SLUG: slug })).toThrow('EVENT_SLUG')
+  })
+  it('merges overrides before environment and recomputes derived values', () => {
+    expect(getEventConfig({ EVENT_BRAND_HOST: 'Env', EVENT_SITE_URL: 'https://env.example', EVENT_NAME: 'Env name' }, { host: 'Saved', shortName: 'S', siteUrl: 'https://saved.example/', name: '' }))
+      .toMatchObject({ siteName: 'Saved ❤️ S', description: 'Saved ❤️ S. Draw your animal, AI brings it to life, and the wall never forgets.', drawUrl: 'https://saved.example/draw', wallUrl: 'https://saved.example/wall', name: 'Env name' })
+    expect(getEventConfig({ EVENT_SLUG: '' }).slug).toBe('ai-world-fair-2026')
+  })
+  it('trims input and omits empty overrides', () => {
+    expect(validateEventOverrides({ name: ' New name ', slug: ' ', url: 'https://example.com' })).toEqual({ overrides: { name: 'New name', url: 'https://example.com' }, errors: {} })
+    expect(validateEventOverrides({})).toEqual({ overrides: {}, errors: {} })
+  })
+  it.each([null, [], 'text', { slug: 'Two--events' }, { url: 'javascript:alert(1)' }, { siteUrl: '/relative' }, { name: 'a'.repeat(121) }, { host: 123 }, { issueRepo: 'owner/repo' }])('rejects invalid overrides %j', input => {
+    expect(Object.keys(validateEventOverrides(input).errors).length).toBeGreaterThan(0)
   })
 })

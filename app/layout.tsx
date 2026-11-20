@@ -2,7 +2,8 @@ import type { Metadata, Viewport } from "next";
 import { Inter, Bangers, Geist } from "next/font/google";
 import "./globals.css";
 import { cn } from "@/lib/utils";
-import { SITE_DESCRIPTION, SITE_NAME } from "@/lib/brand";
+import { getBrand } from "@/lib/brand";
+import { getEvent } from "@/lib/event-settings";
 
 import { publicEventConfig } from "@/lib/event";
 import { EventProvider } from "@/components/EventProvider";
@@ -20,7 +21,11 @@ const bangers = Bangers({
   weight: "400",
 });
 
-export const metadata: Metadata = {
+export const dynamic = "force-dynamic";
+
+export async function generateMetadata(): Promise<Metadata> {
+  const { SITE_NAME, SITE_DESCRIPTION } = await getBrand();
+  return {
   title: SITE_NAME,
   applicationName: SITE_NAME,
   description: SITE_DESCRIPTION,
@@ -35,7 +40,8 @@ export const metadata: Metadata = {
     title: SITE_NAME,
     description: SITE_DESCRIPTION,
   },
-};
+  };
+}
 
 export const viewport: Viewport = {
   width: "device-width",
@@ -44,18 +50,19 @@ export const viewport: Viewport = {
   themeColor: "#08080f",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const event = await getEvent();
   return (
     <html
       lang="en"
       className={cn("h-full", inter.variable, bangers.variable, "font-sans", geist.variable)}
     >
       <body className="min-h-dvh flex flex-col bg-[#08080f] text-[#f0f0f8]">
-        <EventProvider value={publicEventConfig()}>{children}</EventProvider>
+        <EventProvider value={publicEventConfig(event)}>{children}</EventProvider>
       </body>
     </html>
   );

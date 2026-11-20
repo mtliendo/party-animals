@@ -6,7 +6,7 @@ const { query, transaction, neon } = vi.hoisted(() => {
   return { query, transaction, neon: vi.fn(() => Object.assign(query, { transaction })) }
 })
 vi.mock('@neondatabase/serverless', () => ({ neon }))
-vi.mock('./event', () => ({ event: { slug: 'test-event' } }))
+vi.mock('./event-settings', () => ({ getEvent: async () => ({ slug: 'test-event' }) }))
 
 beforeEach(() => {
   vi.resetModules()
@@ -25,12 +25,13 @@ describe('event-scoped database', () => {
     const db = await import('./db')
     await Promise.all([db.getAllAnimals(), db.getAllAnimals()])
     expect(transaction).toHaveBeenCalledTimes(1)
-    expect(transaction.mock.calls[0][0]).toHaveLength(4)
+    expect(transaction.mock.calls[0][0]).toHaveLength(5)
     expect(statements()[0].text).toBe('SELECT pg_advisory_xact_lock(734291806)')
-    expect(statements().filter((s) => s.text.includes('CREATE TABLE IF NOT EXISTS'))).toHaveLength(1)
+    expect(statements().filter((s) => s.text.includes('CREATE TABLE IF NOT EXISTS'))).toHaveLength(2)
     expect(statements()[2].text).toContain("ADD COLUMN IF NOT EXISTS event_slug text NOT NULL DEFAULT 'ai-world-fair-2026'")
     expect(statements()[3].text).toContain('(event_slug, created_at)')
-    expect(statements().slice(4).every((s) => s.values.includes('test-event'))).toBe(true)
+    expect(statements()[4].text).toContain('CREATE TABLE IF NOT EXISTS app_settings')
+    expect(statements().slice(5).every((s) => s.values.includes('test-event'))).toBe(true)
   })
   it('scopes inserts, reads, updates, deletes and resets', async () => {
     const db = await import('./db')
@@ -59,7 +60,7 @@ describe('event-scoped database', () => {
     const db = await import('./db')
     transaction.mockRejectedValueOnce(new Error('offline'))
     await expect(db.getAllAnimals()).rejects.toThrow('offline')
-    expect(query).toHaveBeenCalledTimes(4)
+    expect(query).toHaveBeenCalledTimes(5)
     await expect(db.getAllAnimals()).resolves.toEqual([])
     expect(transaction).toHaveBeenCalledTimes(2)
   })
