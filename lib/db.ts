@@ -97,7 +97,6 @@ export async function updateAnimal(
   id: string,
   data: Partial<Pick<Animal, 'video_url' | 'status' | 'issue_url' | 'image_url'>>
 ): Promise<Animal> {
-  const event = await getEvent()
   const sql = await scopedDatabase()
   const rows = await sql`
     UPDATE animals
@@ -106,7 +105,7 @@ export async function updateAnimal(
       status     = COALESCE(${data.status ?? null}, status),
       tweet_id   = COALESCE(${data.issue_url ?? null}, tweet_id),
       image_url  = COALESCE(${data.image_url ?? null}, image_url)
-    WHERE id = ${id} AND event_slug = ${event.slug}
+    WHERE id = ${id}
     RETURNING id, x_handle AS github_handle, image_url, video_url, status,
               tweet_id AS issue_url, created_at
   `

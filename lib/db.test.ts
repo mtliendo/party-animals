@@ -41,7 +41,7 @@ describe('event-scoped database', () => {
     expect(statements()[4].text).toContain('CREATE TABLE IF NOT EXISTS app_settings')
     expect(statements().slice(5).every((s) => s.values.includes('test-event'))).toBe(true)
   })
-  it('scopes inserts, reads, updates, deletes and resets', async () => {
+  it('scopes inserts, reads, deletes and resets but updates the original animal by id', async () => {
     const db = await import('./db')
     await db.ensureSchema()
     query.mockClear()
@@ -54,9 +54,22 @@ describe('event-scoped database', () => {
     expect(await db.resetEvent()).toBe(1)
     const calls = statements()
     expect(calls).toHaveLength(6)
-    expect(calls.every((s) => s.values.includes('test-event'))).toBe(true)
+    expect(calls.filter((_, index) => index !== 3).every((s) => s.values.includes('test-event'))).toBe(true)
     expect(calls[0].text).toContain('(x_handle, image_url, event_slug)')
-    expect(calls.slice(1).every((s) => s.text.includes('event_slug = ?'))).toBe(true)
+    expect(calls.slice(1).filter((_, index) => index !== 2).every((s) => s.text.includes('event_slug = ?'))).toBe(true)
+    expect(calls[3].text).toContain('WHERE id = ?')
+    expect(calls[3].text).not.toContain('event_slug')
+  })
+  it('persists in-flight results without consulting a changed event slug', async () => {
+    const db = await import('./db')
+    await db.ensureSchema()
+    query.mockClear()
+    getEvent.mockResolvedValue({ slug: 'new-event' })
+    query.mockResolvedValueOnce([{ id: 'original', video_url: 'https://video.example', status: 'approved' }])
+    expect(await db.updateAnimal('original', { video_url: 'https://video.example', status: 'approved' })).toMatchObject({ id: 'original', video_url: 'https://video.example' })
+    expect(getEvent).not.toHaveBeenCalled()
+    expect(statements()[0].values).toContain('original')
+    expect(statements()[0].text).not.toContain('event_slug')
   })
   it('handles empty results without leaking another event', async () => {
     const db = await import('./db')
