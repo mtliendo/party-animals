@@ -1,9 +1,9 @@
+import { event } from './event'
 import { put } from '@vercel/blob'
 import { getAnimalById, updateAnimal } from '@/lib/db'
 
 const XAI_BASE = 'https://api.x.ai/v1'
-const VIDEO_PROMPT =
-  'Animate this party animal drawing — make it fun and bouncy but keep many of the details of the drawing. If the drawing includes text, use that as additional context for the animation but do not include that text in the resulting video.'
+const VIDEO_PROMPT = event.videoPrompt
 
 const inflight = new Set<string>()
 
@@ -44,7 +44,7 @@ export async function generateAndSaveVideo(opts: {
     }
 
     const videoBuffer = await videoRes.arrayBuffer()
-    const stored = await put(`animals/${opts.animalId}/video.mp4`, videoBuffer, {
+    const stored = await put(`events/${event.slug}/animals/${opts.animalId}/video.mp4`, videoBuffer, {
       access: 'public',
       token: process.env.PARTY_ANIMAL_BLOB_READ_WRITE_TOKEN,
       contentType: 'video/mp4',

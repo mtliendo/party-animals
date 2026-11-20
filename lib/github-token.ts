@@ -1,3 +1,4 @@
+import { event } from '@/lib/event'
 import { auth0 } from '@/lib/auth0'
 import { GITHUB_TOKEN_CLAIM_KEYS, githubIdentityToken } from '@/lib/github-claims'
 import {
@@ -104,7 +105,7 @@ export async function getAdminGitHubToken(
 
   try {
     const { token } = await auth0.getAccessTokenForConnection(
-      { connection: 'github' },
+      { connection: event.connection },
       request,
       undefined,
     )

@@ -1,7 +1,7 @@
 import type { NextRequest } from 'next/server'
 import { auth0 } from '@/lib/auth0'
 
-const DEFAULT_ADMIN_LOGINS = 'mtliendo,focusotter'
+import { getEventConfig } from './event'
 
 export type SessionRequest = NextRequest
 
@@ -40,12 +40,13 @@ export function isAdminUser(
 ): boolean {
   if (!user) return false
 
-  const logins = (process.env.ADMIN_GITHUB_LOGIN ?? DEFAULT_ADMIN_LOGINS)
+  const config = getEventConfig()
+  const logins = config.adminLogins
     .split(',')
     .map((s) => s.trim().toLowerCase())
     .filter(Boolean)
 
-  const emails = (process.env.ADMIN_EMAIL ?? '')
+  const emails = config.adminEmails
     .split(',')
     .map((s) => s.trim().toLowerCase())
     .filter(Boolean)
@@ -55,7 +56,6 @@ export function isAdminUser(
   const email = normalize(user.email)
   const emailLocal = email.split('@')[0] ?? ''
   const name = normalize(user.name)
-  const sub = normalize(user.sub)
 
   if (
     logins.includes(nickname) ||
@@ -65,18 +65,14 @@ export function isAdminUser(
     return true
   }
 
-  if (email && (emails.includes(email) || email.endsWith('@focusotter.com'))) {
-    return true
-  }
-
-  if (sub.includes('github') && nickname === 'mtliendo') {
+  const domain = config.adminEmailDomain.trim().toLowerCase().replace(/^@/, '')
+  if (email && (emails.includes(email) || (domain && email.endsWith(`@${domain}`)))) {
     return true
   }
 
   if (
-    name === 'focus otter' ||
-    name.includes('moises') ||
-    name.includes('liendo')
+    config.adminNames.split(',').map(normalize).filter(Boolean).includes(name) ||
+    config.adminNameContains.split(',').map(normalize).filter(Boolean).some((part) => name.includes(part))
   ) {
     return true
   }

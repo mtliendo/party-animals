@@ -1,12 +1,13 @@
 import { getAdminSession } from '@/lib/admin'
 import { getAdminGitHubToken } from '@/lib/github-token'
 import { redirect } from 'next/navigation'
+import { event } from '@/lib/event'
 import SettingsClient from './SettingsClient'
 
 export default async function SettingsPage() {
   const session = await getAdminSession()
   if (!session) {
-    redirect('/auth/login?connection=github&returnTo=/settings')
+    redirect(`/auth/login?connection=${encodeURIComponent(event.connection)}&returnTo=/settings`)
   }
 
   const github = await getAdminGitHubToken()
@@ -18,7 +19,6 @@ export default async function SettingsPage() {
       user={session.user}
       githubConnected={githubConnected}
       githubSource={githubSource}
-      userId={session.user.sub as string}
     />
   )
 }

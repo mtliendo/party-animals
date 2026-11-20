@@ -8,7 +8,7 @@ import {
   viewportCoordsToSceneCoords,
 } from '@excalidraw/excalidraw'
 import '@excalidraw/excalidraw/index.css'
-import { SITE_NAME } from '@/lib/brand'
+import { useEvent } from '@/components/EventProvider'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type ExcalidrawImperativeAPI = any
@@ -76,6 +76,7 @@ function pinFreedrawLiftToLastMove(
 }
 
 export function ExcalidrawWrapper({ excalidrawAPI, onStableScene }: Props) {
+  const { siteName } = useEvent()
   const hostRef = useRef<HTMLDivElement>(null)
   const apiRef = useRef<ExcalidrawImperativeAPI | null>(null)
   const lastTouchRef = useRef<TouchPoint | null>(null)
@@ -191,7 +192,7 @@ export function ExcalidrawWrapper({ excalidrawAPI, onStableScene }: Props) {
         excalidrawAPI={handleAPI}
         theme='light'
         handleKeyboardGlobally
-        name={SITE_NAME}
+        name={siteName}
         initialData={{
           appState: {
             activeTool: FREEDRAW_TOOL,

@@ -1,6 +1,5 @@
-/** Red heart: U+2764 HEAVY BLACK HEART + U+FE0F emoji presentation. */
-export const HEART = "\u2764\uFE0F";
+import { event } from './event';
+export { HEART } from './event-heart';
+export const SITE_NAME = event.siteName;
 
-export const SITE_NAME = `Auth0 ${HEART} AIE`;
-
-export const SITE_DESCRIPTION = `${SITE_NAME}. Draw your animal, AI brings it to life, and the wall never forgets.`;
+export const SITE_DESCRIPTION = event.description;

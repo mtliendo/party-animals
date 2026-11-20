@@ -2,7 +2,7 @@ import Link from 'next/link'
 import { getSessionFlags } from '@/lib/admin'
 import { DrawingPreview } from './DrawingPreview'
 import { SiteBrand } from '@/components/SiteBrand'
-import { HEART } from '@/lib/brand'
+import { HEART, event } from '@/lib/event'
 
 export default async function Home() {
   const { isAdmin } = await getSessionFlags()
@@ -45,7 +45,7 @@ export default async function Home() {
             </>
           ) : (
             <Link
-              href='/auth/login?connection=github&returnTo=/settings'
+              href={`/auth/login?connection=${encodeURIComponent(event.connection)}&returnTo=/settings`}
               className='text-sm hover:text-white transition-colors'
               style={{ color: 'var(--text-muted)' }}
             >
@@ -77,18 +77,18 @@ export default async function Home() {
               }}
             >
               <span className='w-1.5 h-1.5 rounded-full bg-current animate-pulse' />
-              AI Engineer · San Francisco
+              {event.tagline}
             </div>
 
             <h1 className='hero-wordmark mb-6'>
-              <span className='gradient-text glow-pink hero-auth0'>Auth0</span>
+              <span className='gradient-text glow-pink hero-auth0'>{event.host}</span>
               <br />
               <span className='hero-welcome'>
                 <span className='brand-heart hero-heart'>
                   {HEART}
                 </span>
                 <span className='glow-cyan' style={{ color: 'var(--neon-cyan)' }}>
-                  AIE
+                  {event.shortName}
                 </span>
               </span>
             </h1>
