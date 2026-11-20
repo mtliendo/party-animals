@@ -1,9 +1,9 @@
 import { Octokit } from 'octokit'
 
-const ISSUE_REPO = process.env.GITHUB_ISSUE_REPO ?? 'focusotter/party-animals-gallery'
-const EVENT_LABEL = 'ai-world-fair'
-const WALL_URL =
-  process.env.NEXT_PUBLIC_WALL_URL ?? 'https://party-animals-xi.vercel.app/wall'
+import { event } from './event'
+const ISSUE_REPO = event.issueRepo
+const EVENT_LABEL = event.issueLabel
+const WALL_URL = event.wallUrl
 
 function repoParts() {
   const [owner, repo] = ISSUE_REPO.split('/')
@@ -63,7 +63,7 @@ export async function createAnimalIssue(
     `Check out all the animals on [The Wall](${WALL_URL})`,
     '',
     '---',
-    `_Created at [AI World Fair 2026](https://www.ai.engineer/worldsfair/2026) · Powered by [Auth0](https://auth0.com) Token Vault_`,
+    `_Created at [${event.name}](${event.url}) · Powered by [Auth0](https://auth0.com) Token Vault_`,
   ]
 
   const issue = await octokit.rest.issues.create({

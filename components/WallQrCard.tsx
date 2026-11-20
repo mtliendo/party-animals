@@ -1,11 +1,12 @@
 'use client'
 
-import { DRAW_ENTRY_URL } from '@/lib/draw-entry'
+import { useEvent } from '@/components/EventProvider'
 
 export function WallQrCard({ qrSvg }: { qrSvg: string }) {
+  const { drawUrl } = useEvent()
   return (
     <a
-      href={DRAW_ENTRY_URL}
+      href={drawUrl}
       className='wall-qr-card'
       aria-label='Scan to draw your animal'
     >

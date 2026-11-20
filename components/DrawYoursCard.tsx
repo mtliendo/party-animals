@@ -1,12 +1,13 @@
 'use client'
 
 import { DrawingPreview } from '@/app/DrawingPreview'
-import { DRAW_ENTRY_URL } from '@/lib/draw-entry'
+import { useEvent } from '@/components/EventProvider'
 
 export function DrawYoursCard() {
+  const { drawUrl } = useEvent()
   return (
     <a
-      href={DRAW_ENTRY_URL}
+      href={drawUrl}
       className='card draw-yours-card flex flex-col'
       aria-label='Draw your animal'
     >

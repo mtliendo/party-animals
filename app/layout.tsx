@@ -4,6 +4,9 @@ import "./globals.css";
 import { cn } from "@/lib/utils";
 import { SITE_DESCRIPTION, SITE_NAME } from "@/lib/brand";
 
+import { publicEventConfig } from "@/lib/event";
+import { EventProvider } from "@/components/EventProvider";
+
 const geist = Geist({subsets:['latin'],variable:'--font-sans'});
 
 const inter = Inter({
@@ -52,7 +55,7 @@ export default function RootLayout({
       className={cn("h-full", inter.variable, bangers.variable, "font-sans", geist.variable)}
     >
       <body className="min-h-dvh flex flex-col bg-[#08080f] text-[#f0f0f8]">
-        {children}
+        <EventProvider value={publicEventConfig()}>{children}</EventProvider>
       </body>
     </html>
   );

@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import { useEvent } from '@/components/EventProvider'
 import { SiteBrand } from '@/components/SiteBrand'
 import {
   Card,
@@ -23,13 +24,12 @@ export default function SettingsClient({
   user,
   githubConnected,
   githubSource,
-  userId,
 }: {
   user: User
   githubConnected: boolean
   githubSource: 'token-vault' | 'github-login' | 'env' | null
-  userId: string
 }) {
+  const { connection } = useEvent()
   return (
     <div
       className='min-h-screen flex flex-col'
@@ -193,13 +193,13 @@ export default function SettingsClient({
                   </div>
                 ) : null}
                 <a
-                  href='/auth/login?connection=github&returnTo=/settings'
+                  href={`/auth/login?connection=${encodeURIComponent(connection)}&returnTo=/settings`}
                   className='btn-primary w-full justify-center text-center'
                 >
                   {githubConnected ? 'Re-sign in with GitHub' : 'Sign in with GitHub'}
                 </a>
                 <a
-                  href='/auth/connect?connection=github&returnTo=/settings'
+                  href={`/auth/connect?connection=${encodeURIComponent(connection)}&returnTo=/settings`}
                   className='btn-secondary w-full justify-center text-center'
                 >
                   Connect GitHub (Token Vault)
@@ -217,10 +217,10 @@ export default function SettingsClient({
               color: 'var(--text-muted)',
             }}
           >
-            <span className='opacity-60'>demo purposes: to reset, run </span>
+            <span className='opacity-60'>To clear this event&apos;s wall, run </span>
             <code
               style={{ color: 'var(--gold)' }}
-            >{`auth0 users delete "${userId}" --force`}</code>
+            >pnpm event:reset --yes</code>
             <span className='opacity-60'> in your terminal</span>
           </div>
 
