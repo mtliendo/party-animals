@@ -10,6 +10,18 @@ beforeEach(() => {
 })
 
 describe('request-time event settings', () => {
+  it('strict reads use saved settings or environment only when no overrides exist', async () => {
+    read.mockResolvedValueOnce({ name: 'Saved' }).mockResolvedValueOnce({})
+    expect((await getEvent({ strict: true })).name).toBe('Saved')
+    expect((await getEvent({ strict: true })).name).toBe('Environment')
+  })
+  it('strict reads reject unavailable or invalid saved settings', async () => {
+    read.mockRejectedValueOnce(new Error('offline')).mockResolvedValueOnce({ slug: 'INVALID' })
+    await expect(getEvent({ strict: true })).rejects.toThrow('offline')
+    await expect(getEvent({ strict: true })).rejects.toThrow('Invalid saved event settings')
+    vi.stubEnv('DATABASE_URL', '')
+    await expect(getEvent({ strict: true })).rejects.toThrow('DATABASE_URL is not set')
+  })
   it('reads changes on each call and handles no saved row', async () => {
     read.mockResolvedValueOnce({ name: 'First' }).mockResolvedValueOnce({ name: 'Second' }).mockResolvedValueOnce({})
     expect((await getEvent()).name).toBe('First')

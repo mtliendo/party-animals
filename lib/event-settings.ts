@@ -2,7 +2,7 @@ import process from 'node:process'
 import { getEventConfig, validateEventOverrides, type EventOverrides } from './event'
 import { readEventOverrides, writeEventOverrides, clearEventOverrides } from './db'
 
-export async function getEventSettings() {
+export async function getEventSettings({ strict = false } = {}) {
   const defaults = getEventConfig()
   let overrides: EventOverrides = {}
   try {
@@ -10,14 +10,15 @@ export async function getEventSettings() {
     const result = validateEventOverrides(await readEventOverrides())
     if (Object.keys(result.errors).length) throw new Error('Invalid saved event settings')
     overrides = result.overrides
-  } catch {
+  } catch (error) {
+    if (strict) throw error
     console.warn('[event-settings] Unable to read settings; using environment defaults')
   }
   return { effective: getEventConfig(process.env, overrides), overrides, defaults }
 }
 
-export async function getEvent() {
-  return (await getEventSettings()).effective
+export async function getEvent(options: { strict?: boolean } = {}) {
+  return (await getEventSettings(options)).effective
 }
 
 export async function saveEventOverrides(overrides: EventOverrides) {

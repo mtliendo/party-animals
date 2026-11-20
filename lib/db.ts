@@ -125,13 +125,13 @@ export async function getAnimalById(id: string): Promise<Animal | null> {
 }
 
 export async function deleteAnimal(id: string): Promise<void> {
-  const event = await getEvent()
+  const event = await getEvent({ strict: true })
   const sql = await scopedDatabase()
   await sql`DELETE FROM animals WHERE id = ${id} AND event_slug = ${event.slug}`
 }
 
 export async function resetEvent(): Promise<number> {
-  const event = await getEvent()
+  const event = await getEvent({ strict: true })
   const sql = await scopedDatabase()
   const rows = await sql`DELETE FROM animals WHERE event_slug = ${event.slug} RETURNING id`
   return rows.length

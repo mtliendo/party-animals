@@ -9,7 +9,7 @@ async function main() {
   }
   const { ensureSchema, resetEvent } = await import('../lib/db')
   const { getEvent } = await import('../lib/event-settings')
-  const event = await getEvent()
+  const event = await getEvent({ strict: command === 'reset' })
   if (command === 'setup') {
     await ensureSchema()
     console.log('Event database schema ready.')

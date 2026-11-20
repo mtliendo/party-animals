@@ -1,12 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-const { query, transaction, neon } = vi.hoisted(() => {
+const { query, transaction, neon, getEvent } = vi.hoisted(() => {
   const query = vi.fn()
   const transaction = vi.fn()
-  return { query, transaction, neon: vi.fn(() => Object.assign(query, { transaction })) }
+  return { query, transaction, neon: vi.fn(() => Object.assign(query, { transaction })), getEvent: vi.fn() }
 })
 vi.mock('@neondatabase/serverless', () => ({ neon }))
-vi.mock('./event-settings', () => ({ getEvent: async () => ({ slug: 'test-event' }) }))
+vi.mock('./event-settings', () => ({ getEvent }))
 
 beforeEach(() => {
   vi.resetModules()
@@ -14,6 +14,7 @@ beforeEach(() => {
   vi.stubEnv('DATABASE_URL', 'postgresql://unused:unused@localhost/unused')
   query.mockResolvedValue([])
   transaction.mockResolvedValue([])
+  getEvent.mockResolvedValue({ slug: 'test-event' })
 })
 
 function statements() {
@@ -21,6 +22,13 @@ function statements() {
 }
 
 describe('event-scoped database', () => {
+  it.each(['deleteAnimal', 'resetEvent'] as const)('fails closed before %s when settings cannot be read', async operation => {
+    const db = await import('./db')
+    getEvent.mockRejectedValueOnce(new Error('offline'))
+    await expect(db[operation]('one')).rejects.toThrow('offline')
+    expect(getEvent).toHaveBeenCalledWith({ strict: true })
+    expect(query).not.toHaveBeenCalled()
+  })
   it('shares an idempotent schema promise before the first queries', async () => {
     const db = await import('./db')
     await Promise.all([db.getAllAnimals(), db.getAllAnimals()])
