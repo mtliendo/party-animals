@@ -35,7 +35,7 @@ export default function SettingsClient({
   githubSource: 'token-vault' | 'github-login' | 'env' | null
   settings: { effective: ReturnType<typeof getEventConfig>; defaults: ReturnType<typeof getEventConfig> }
 }) {
-  const { connection, loginConnection } = useEvent()
+  const { connection } = useEvent()
   const router = useRouter()
   const [values, setValues] = useState(() => Object.fromEntries(eventFields.map(key => [key, settings.effective[key]])))
   const [errors, setErrors] = useState<Record<string, string>>({})
@@ -226,12 +226,10 @@ export default function SettingsClient({
                   </div>
                 ) : null}
                 <a
-                  href={loginUrl(loginConnection)}
+                  href={loginUrl(connection)}
                   className='btn-primary w-full justify-center text-center'
                 >
-                  {loginConnection === connection
-                    ? githubConnected ? 'Re-sign in with GitHub' : 'Sign in with GitHub'
-                    : 'Sign in'}
+                  {githubConnected ? 'Re-sign in with GitHub' : 'Sign in with GitHub'}
                 </a>
                 <a
                   href={`/auth/connect?connection=${encodeURIComponent(connection)}&returnTo=/settings`}
