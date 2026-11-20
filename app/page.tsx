@@ -2,7 +2,7 @@ import Link from 'next/link'
 import { getSessionFlags } from '@/lib/admin'
 import { DrawingPreview } from './DrawingPreview'
 import { SiteBrand } from '@/components/SiteBrand'
-import { HEART } from '@/lib/event'
+import { HEART, loginUrl } from '@/lib/event'
 import { getEvent } from '@/lib/event-settings'
 
 export default async function Home() {
@@ -46,13 +46,13 @@ export default async function Home() {
               </Link>
             </>
           ) : (
-            <Link
-              href={`/auth/login?connection=${encodeURIComponent(event.connection)}&returnTo=/settings`}
+            <a
+              href={loginUrl(event.loginConnection)}
               className='text-sm hover:text-white transition-colors'
               style={{ color: 'var(--text-muted)' }}
             >
               Admin
-            </Link>
+            </a>
           )}
         </div>
       </nav>

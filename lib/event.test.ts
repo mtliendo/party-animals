@@ -1,7 +1,21 @@
 import { describe, expect, it } from 'vitest'
-import { getEventConfig, validateEventOverrides } from './event'
+import { getEventConfig, loginUrl, publicEventConfig, validateEventOverrides } from './event'
 
 describe('event configuration', () => {
+  it('keeps the production GitHub login default separate from preview login', () => {
+    const production = getEventConfig({})
+    expect(production.loginConnection).toBe('github')
+    expect(loginUrl(production.loginConnection)).toBe('/auth/login?connection=github&returnTo=%2Fsettings')
+    const preview = getEventConfig({ AUTH0_LOGIN_CONNECTION: 'Username-Password-Authentication' })
+    expect(preview.connection).toBe('github')
+    expect(publicEventConfig(preview).loginConnection).toBe('Username-Password-Authentication')
+    expect(loginUrl(preview.loginConnection)).toBe('/auth/login?connection=Username-Password-Authentication&returnTo=%2Fsettings')
+  })
+  it('supports Universal Login without a forced connection and custom legacy connections', () => {
+    expect(loginUrl(getEventConfig({ AUTH0_LOGIN_CONNECTION: '' }).loginConnection)).toBe('/auth/login?returnTo=%2Fsettings')
+    expect(getEventConfig({ AUTH0_TOKEN_VAULT_CONNECTION: 'custom-github' }).loginConnection).toBe('custom-github')
+    expect(loginUrl('name&other=value', '/settings?tab=app')).toBe('/auth/login?connection=name%26other%3Dvalue&returnTo=%2Fsettings%3Ftab%3Dapp')
+  })
   it('preserves the existing event defaults', () => {
     expect(getEventConfig({})).toMatchObject({
       slug: 'ai-world-fair-2026', name: 'AI World Fair 2026',

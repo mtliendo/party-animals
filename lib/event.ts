@@ -67,6 +67,7 @@ export function getEventConfig(env: Record<string, string | undefined> = process
     issueRepo: env.GITHUB_ISSUE_REPO ?? 'focusotter/party-animals-gallery',
     issueLabel: env.EVENT_ISSUE_LABEL ?? 'ai-world-fair',
     connection: env.AUTH0_TOKEN_VAULT_CONNECTION ?? 'github',
+    loginConnection: env.AUTH0_LOGIN_CONNECTION?.trim() ?? env.AUTH0_TOKEN_VAULT_CONNECTION ?? 'github',
     videoPrompt: env.EVENT_VIDEO_PROMPT ?? 'Animate this party animal drawing — make it fun and bouncy but keep many of the details of the drawing. If the drawing includes text, use that as additional context for the animation but do not include that text in the resulting video.',
     adminLogins: env.ADMIN_GITHUB_LOGIN ?? 'mtliendo,focusotter',
     adminEmails: env.ADMIN_EMAIL ?? '',
@@ -77,6 +78,10 @@ export function getEventConfig(env: Record<string, string | undefined> = process
 }
 
 export function publicEventConfig(event: ReturnType<typeof getEventConfig>) {
-  const { host, shortName, siteName, drawUrl, connection } = event
-  return { host, shortName, siteName, drawUrl, connection }
+  const { host, shortName, siteName, drawUrl, connection, loginConnection } = event
+  return { host, shortName, siteName, drawUrl, connection, loginConnection }
+}
+
+export function loginUrl(connection: string, returnTo = '/settings') {
+  return `/auth/login?${connection ? `connection=${encodeURIComponent(connection)}&` : ''}returnTo=${encodeURIComponent(returnTo)}`
 }

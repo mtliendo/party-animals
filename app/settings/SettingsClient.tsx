@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast, Toaster } from 'sonner'
-import { eventFields, type getEventConfig } from '@/lib/event'
+import { eventFields, loginUrl, type getEventConfig } from '@/lib/event'
 import { useEvent } from '@/components/EventProvider'
 import { SiteBrand } from '@/components/SiteBrand'
 import {
@@ -35,7 +35,7 @@ export default function SettingsClient({
   githubSource: 'token-vault' | 'github-login' | 'env' | null
   settings: { effective: ReturnType<typeof getEventConfig>; defaults: ReturnType<typeof getEventConfig> }
 }) {
-  const { connection } = useEvent()
+  const { connection, loginConnection } = useEvent()
   const router = useRouter()
   const [values, setValues] = useState(() => Object.fromEntries(eventFields.map(key => [key, settings.effective[key]])))
   const [errors, setErrors] = useState<Record<string, string>>({})
@@ -226,10 +226,12 @@ export default function SettingsClient({
                   </div>
                 ) : null}
                 <a
-                  href={`/auth/login?connection=${encodeURIComponent(connection)}&returnTo=/settings`}
+                  href={loginUrl(loginConnection)}
                   className='btn-primary w-full justify-center text-center'
                 >
-                  {githubConnected ? 'Re-sign in with GitHub' : 'Sign in with GitHub'}
+                  {loginConnection === connection
+                    ? githubConnected ? 'Re-sign in with GitHub' : 'Sign in with GitHub'
+                    : 'Sign in'}
                 </a>
                 <a
                   href={`/auth/connect?connection=${encodeURIComponent(connection)}&returnTo=/settings`}

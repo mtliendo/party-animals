@@ -1,8 +1,38 @@
-import { afterEach, describe, expect, it, vi } from 'vitest'
-vi.mock('@/lib/auth0', () => ({ auth0: {} }))
-import { isAdminUser } from './admin'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { NextRequest } from 'next/server'
+const { getSession } = vi.hoisted(() => ({ getSession: vi.fn() }))
+vi.mock('@/lib/auth0', () => ({ auth0: { getSession } }))
+import { getAdminSession, isAdminUser, readAuth0Session } from './admin'
+
+beforeEach(() => getSession.mockReset())
 
 afterEach(() => vi.unstubAllEnvs())
+
+describe('admin session reads', () => {
+  it('accepts an email/password admin session from the API request', async () => {
+    const request = new NextRequest('https://preview.example/api/settings/event')
+    const session = { user: { sub: 'auth0|qa-user', email: 'otter-ranger@focusotter.com' } }
+    getSession.mockResolvedValueOnce(session)
+    expect(await getAdminSession(request)).toBe(session)
+    expect(getSession).toHaveBeenCalledExactlyOnceWith(request)
+  })
+  it('falls back to the App Router cookie context if the request read finds no session', async () => {
+    const session = { user: { email: 'otter-ranger@focusotter.com' } }
+    getSession.mockResolvedValueOnce(null).mockResolvedValueOnce(session)
+    expect(await readAuth0Session(new NextRequest('https://preview.example/api/settings/event'))).toBe(session)
+    expect(getSession.mock.calls[1]).toEqual([])
+  })
+  it('does not cache a missing session across requests', async () => {
+    const session = { user: { email: 'otter-ranger@focusotter.com' } }
+    getSession.mockResolvedValueOnce(null).mockResolvedValueOnce(null).mockResolvedValueOnce(session)
+    expect(await getAdminSession(new NextRequest('https://preview.example/api/settings/event'))).toBeNull()
+    expect(await getAdminSession(new NextRequest('https://preview.example/api/settings/event'))).toBe(session)
+  })
+  it('does not elevate an authenticated non-admin', async () => {
+    getSession.mockResolvedValueOnce({ user: { email: 'guest@example.com' } })
+    expect(await getAdminSession(new NextRequest('https://preview.example/api/settings/event'))).toBeNull()
+  })
+})
 
 describe('isAdminUser', () => {
   it('keeps all legacy admin grants', () => {

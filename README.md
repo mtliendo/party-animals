@@ -13,6 +13,8 @@ Draw an animal, bring it to life with AI, and curate a public wall. Approved ani
 - Optionally run `pnpm db:setup` against your intended database. The app also creates/migrates its schema on its first database operation. The DB role needs table/index creation and alteration privileges.
 - Redeploy after environment changes, then log in and connect GitHub on `/settings`. Submit on `/draw`, review on `/wall`, and approve posting as an admin.
 
+Login and Token Vault can use different Auth0 connections. `AUTH0_LOGIN_CONNECTION` defaults to `AUTH0_TOKEN_VAULT_CONNECTION` (`github`), preserving the GitHub login flow. For an email/password-only preview client, set `AUTH0_LOGIN_CONNECTION=Username-Password-Authentication` (or an empty string for Universal Login to choose). Leave `AUTH0_TOKEN_VAULT_CONNECTION=github` for GitHub Connect/posting. Preview `APP_BASE_URL` must match the exact hostname used to sign in and call the API; register its `/auth/callback` with the Auth0 client. Session cookies are host-only by default: logging in on another deployment URL does not authenticate the branch alias.
+
 ### Fresh wall / reset
 
 Admins can use **Settings → CONFIGURE APP** to change the event slug, name, URL, brand host/short name, tagline, site URL and issue label without redeploying. Only overrides are saved in Neon's singleton `app_settings` row; empty fields fall back to environment variables and then built-in defaults. **Reset to env defaults** clears saved overrides. Reads fall back to the environment if Neon is unavailable. All other settings below remain environment-only.
