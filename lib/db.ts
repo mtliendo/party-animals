@@ -10,7 +10,9 @@ let schema: Promise<void> | undefined
 export function ensureSchema(): Promise<void> {
   schema ??= (async () => {
     const sql = database()
-    await sql`
+    await sql.transaction([
+      sql`SELECT pg_advisory_xact_lock(734291806)`,
+      sql`
       CREATE TABLE IF NOT EXISTS animals (
         id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
         x_handle text NOT NULL,
@@ -20,9 +22,10 @@ export function ensureSchema(): Promise<void> {
         tweet_id text,
         created_at timestamptz NOT NULL DEFAULT now()
       )
-    `
-    await sql`ALTER TABLE animals ADD COLUMN IF NOT EXISTS event_slug text NOT NULL DEFAULT 'ai-world-fair-2026'`
-    await sql`CREATE INDEX IF NOT EXISTS animals_event_created_at_idx ON animals (event_slug, created_at)`
+      `,
+      sql`ALTER TABLE animals ADD COLUMN IF NOT EXISTS event_slug text NOT NULL DEFAULT 'ai-world-fair-2026'`,
+      sql`CREATE INDEX IF NOT EXISTS animals_event_created_at_idx ON animals (event_slug, created_at)`,
+    ])
   })().catch((error) => {
     schema = undefined
     throw error

@@ -1,8 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-const { query, neon } = vi.hoisted(() => {
+const { query, transaction, neon } = vi.hoisted(() => {
   const query = vi.fn()
-  return { query, neon: vi.fn(() => query) }
+  const transaction = vi.fn()
+  return { query, transaction, neon: vi.fn(() => Object.assign(query, { transaction })) }
 })
 vi.mock('@neondatabase/serverless', () => ({ neon }))
 vi.mock('./event', () => ({ event: { slug: 'test-event' } }))
@@ -12,6 +13,7 @@ beforeEach(() => {
   vi.clearAllMocks()
   vi.stubEnv('DATABASE_URL', 'postgresql://unused:unused@localhost/unused')
   query.mockResolvedValue([])
+  transaction.mockResolvedValue([])
 })
 
 function statements() {
@@ -22,10 +24,13 @@ describe('event-scoped database', () => {
   it('shares an idempotent schema promise before the first queries', async () => {
     const db = await import('./db')
     await Promise.all([db.getAllAnimals(), db.getAllAnimals()])
+    expect(transaction).toHaveBeenCalledTimes(1)
+    expect(transaction.mock.calls[0][0]).toHaveLength(4)
+    expect(statements()[0].text).toBe('SELECT pg_advisory_xact_lock(734291806)')
     expect(statements().filter((s) => s.text.includes('CREATE TABLE IF NOT EXISTS'))).toHaveLength(1)
-    expect(statements()[1].text).toContain("ADD COLUMN IF NOT EXISTS event_slug text NOT NULL DEFAULT 'ai-world-fair-2026'")
-    expect(statements()[2].text).toContain('(event_slug, created_at)')
-    expect(statements().slice(3).every((s) => s.values.includes('test-event'))).toBe(true)
+    expect(statements()[2].text).toContain("ADD COLUMN IF NOT EXISTS event_slug text NOT NULL DEFAULT 'ai-world-fair-2026'")
+    expect(statements()[3].text).toContain('(event_slug, created_at)')
+    expect(statements().slice(4).every((s) => s.values.includes('test-event'))).toBe(true)
   })
   it('scopes inserts, reads, updates, deletes and resets', async () => {
     const db = await import('./db')
@@ -52,8 +57,10 @@ describe('event-scoped database', () => {
   })
   it('propagates schema errors and allows retry', async () => {
     const db = await import('./db')
-    query.mockRejectedValueOnce(new Error('offline'))
+    transaction.mockRejectedValueOnce(new Error('offline'))
     await expect(db.getAllAnimals()).rejects.toThrow('offline')
+    expect(query).toHaveBeenCalledTimes(4)
     await expect(db.getAllAnimals()).resolves.toEqual([])
+    expect(transaction).toHaveBeenCalledTimes(2)
   })
 })
