@@ -193,6 +193,36 @@ body {
   flex-shrink: 0;
 }
 
+@media (width < 768px) {
+  .app-nav {
+    gap: 0.5rem;
+    padding-inline: 0.75rem;
+    flex-wrap: wrap;
+  }
+
+  .app-nav .site-brand {
+    flex: 1 1 5rem;
+    font-size: 1rem;
+  }
+
+  .app-nav .site-brand-auth0,
+  .app-nav .site-brand-rest {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .app-nav .site-brand .brand-heart {
+    flex-shrink: 0;
+  }
+
+  .app-nav-links {
+    flex-wrap: wrap;
+    max-width: 100%;
+  }
+}
+
 .btn-primary {
   display: inline-flex;
   align-items: center;

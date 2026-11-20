@@ -6,7 +6,7 @@ import { HEART } from "@/lib/event-heart";
 export function SiteBrand() {
   const { host, shortName, siteName } = useEvent();
   return (
-    <Link href="/" className="site-brand" aria-label={siteName}>
+    <Link href="/" className="site-brand" aria-label={siteName} title={siteName}>
       <span className="site-brand-auth0">{host}</span>
       <span className="brand-heart" aria-hidden="true">
         {HEART}
