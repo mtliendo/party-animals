@@ -16,7 +16,7 @@ export function validateEventOverrides(input: unknown) {
       continue
     }
     if (typeof value !== 'string') { errors[key] = 'Expected text'; continue }
-    const text = value.trim()
+    let text = value.trim()
     if (!text) continue
     if (text.length > (key === 'url' || key === 'siteUrl' ? 2048 : 120)) {
       errors[key] = 'Value is too long'
@@ -25,7 +25,14 @@ export function validateEventOverrides(input: unknown) {
     if (key === 'slug' && !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(text)) errors[key] = 'Use lowercase letters, numbers and single hyphens'
     if (key === 'url' || key === 'siteUrl') {
       try {
-        if (!['http:', 'https:'].includes(new URL(text).protocol)) throw new Error()
+        const url = new URL(text)
+        if (!['http:', 'https:'].includes(url.protocol)) throw new Error()
+        if (key === 'siteUrl') {
+          if (url.search || url.hash || text.includes('?') || text.includes('#')) {
+            errors[key] = 'Site URL must not contain a query string or fragment'
+          }
+          text = text.replace(/\/$/, '')
+        }
       } catch { errors[key] = 'Enter an http(s) URL' }
     }
     overrides[key as typeof eventFields[number]] = text

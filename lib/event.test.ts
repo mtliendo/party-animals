@@ -48,6 +48,15 @@ describe('event configuration', () => {
     expect(validateEventOverrides({ name: ' New name ', slug: ' ', url: 'https://example.com' })).toEqual({ overrides: { name: 'New name', url: 'https://example.com' }, errors: {} })
     expect(validateEventOverrides({})).toEqual({ overrides: {}, errors: {} })
   })
+  it.each(['https://example.com/?a=1', 'https://example.com/#section', 'https://example.com/?', 'https://example.com/#'])('rejects site URL queries and fragments %s', siteUrl => {
+    expect(validateEventOverrides({ siteUrl }).errors).toHaveProperty('siteUrl')
+  })
+  it('strips a site URL trailing slash and derives clean links', () => {
+    const result = validateEventOverrides({ siteUrl: ' https://example.com/base/ ' })
+    expect(result).toEqual({ overrides: { siteUrl: 'https://example.com/base' }, errors: {} })
+    expect(getEventConfig({}, result.overrides)).toMatchObject({ drawUrl: 'https://example.com/base/draw', wallUrl: 'https://example.com/base/wall' })
+    expect(validateEventOverrides({ url: 'https://example.com/?a=1#section' }).errors).toEqual({})
+  })
   it.each([null, [], 'text', { slug: 'Two--events' }, { url: 'javascript:alert(1)' }, { siteUrl: '/relative' }, { name: 'a'.repeat(121) }, { host: 123 }, { issueRepo: 'owner/repo' }])('rejects invalid overrides %j', input => {
     expect(Object.keys(validateEventOverrides(input).errors).length).toBeGreaterThan(0)
   })

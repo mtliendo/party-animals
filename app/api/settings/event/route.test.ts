@@ -58,6 +58,12 @@ describe('admin event settings API', () => {
     expect(res.status).toBe(400)
     expect((await res.json()).errors).toHaveProperty('body')
   })
+  it('returns a siteUrl field error for query strings or fragments', async () => {
+    const res = await PUT(request({ siteUrl: 'https://example.com/?a=1#section' }))
+    expect(res.status).toBe(400)
+    expect((await res.json()).errors).toHaveProperty('siteUrl')
+    expect(write).not.toHaveBeenCalled()
+  })
   it('reports write and reset failures', async () => {
     write.mockRejectedValueOnce(new Error('offline'))
     clear.mockRejectedValueOnce(new Error('offline'))
